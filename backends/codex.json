@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "name": "codex",
+  "display_name": "Codex CLI",
+  "kind": "argv-stdin-jsonl",
+  "auto_priority": 30,
+  "discovery": {
+    "binaries": {
+      "codex": {"env": "INDEPENDENT_REVIEW_CODEX_BIN"}
+    }
+  },
+  "command": [
+    "{bin:codex}",
+    "exec",
+    "--sandbox", "read-only",
+    "--ask-for-approval", "never",
+    "--skip-git-repo-check",
+    "--ephemeral",
+    "--json",
+    "--color", "never",
+    "--cd", "{cwd}",
+    "-"
+  ],
+  "identity": {
+    "model": {"flag": "--model"},
+    "effort": {"args": ["--config", "model_reasoning_effort=\"{effort}\""]}
+  },
+  "result": {"strategy": "jsonl-terminal-message"},
+  "timeouts": {"review-paths": 2400, "default": 1200},
+  "notes": "references/backend-codex.md"
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Independent Review"
+  short_description: "Run one backend-neutral, read-only code review"
+  default_prompt: "Use $independent-review to choose a sufficient evidence surface, run one read-only reviewer CLI from the discovered profiles, and verify material findings locally."
+policy:
+  allow_implicit_invocation: false

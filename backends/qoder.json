@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "name": "qoder",
+  "display_name": "Qoder CLI",
+  "kind": "adapter-prompt-file",
+  "auto_priority": 20,
+  "discovery": {
+    "binaries": {
+      "qodercli": {
+        "env": "INDEPENDENT_REVIEW_QODERCLI_BIN",
+        "basename": "qodercli",
+        "prepend_to_path": true,
+        "trace_sha256": true
+      }
+    },
+    "adapter": {
+      "env": "QODERCLI_TASK",
+      "candidates": [
+        "{skill_dir}/../using-qodercli/scripts/qodercli-task.py",
+        "~/.agents/skills/using-qodercli/scripts/qodercli-task.py"
+      ]
+    }
+  },
+  "adapter": {
+    "path_tools": {"flag": "--tools", "value": "Read,Grep,Glob"},
+    "timeout_flag": "--timeout-seconds",
+    "env_hook": "login-zsh",
+    "env_hook_env": "INDEPENDENT_REVIEW_QODER_SHELL_ENV",
+    "result": {"strategy": "stdout-text"},
+    "prompt_limit": "half-arg-max"
+  },
+  "identity": {
+    "model": {"flag": "--model"},
+    "effort": {"flag": "--reasoning-effort"},
+    "agent": {"flag": "--agent"}
+  },
+  "timeouts": {"review-paths": 2400, "default": 1200},
+  "notes": "references/backend-qoder.md"
+}
