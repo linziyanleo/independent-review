@@ -1,8 +1,13 @@
 # Backend Profile Specification
 
 A backend profile is one JSON object that adapts a reviewer CLI to the
-independent-review contract. The dispatcher loads profiles from exactly two
-trusted directories, never from the reviewed repository:
+independent-review contract. Read
+[backend-integration.md](backend-integration.md) first for the decision rule
+(no adapter vs. wrapper vs. SDK controller) and the adapter contract; this
+document is the field-level schema.
+
+The dispatcher loads profiles from exactly two trusted directories, never
+from the reviewed repository:
 
 1. `${INDEPENDENT_REVIEW_HOME:-~/.config/independent-review}/backends/*.json`
    (user profiles; a user profile with the same `name` replaces the bundled
@@ -21,7 +26,7 @@ extension that requires dispatcher code.
 | `name` | string | `^[a-z0-9][a-z0-9-]*$`; the value passed to `--backend`. Required. |
 | `display_name` | string | Human label used in listings. Required. |
 | `kind` | string | Invocation shape: `adapter-prompt-file` or `argv-stdin-jsonl`. Required. |
-| `auto_priority` | integer | Bundled profiles join `--backend auto` in ascending order. User profiles never join implicit auto; name them in `INDEPENDENT_REVIEW_BACKENDS` to opt in. Required. |
+| `auto_priority` | integer (not boolean) | Bundled profiles join `--backend auto` in ascending order. User profiles never join implicit auto; name them in `INDEPENDENT_REVIEW_BACKENDS` to opt in. Required. |
 | `discovery` | object | How the dispatcher finds binaries and the adapter. Required. |
 | `identity` | object | Which of `provider`, `model`, `effort`, `agent` the backend accepts, and how to spell them. Required (any entry may be `null`). |
 | `timeouts` | object | `{"review-paths": seconds-or-null, "default": seconds-or-null}`. `null` means no dispatcher timeout. Required. |
@@ -44,7 +49,7 @@ extension that requires dispatcher code.
   },
   "adapter": {
     "env": "QODERCLI_TASK",
-    "candidates": ["{skill_dir}/../using-qodercli/scripts/qodercli-task.py"]
+    "candidates": ["{skill_dir}/scripts/adapters/qodercli-task.py"]
   }
 }
 ```
@@ -80,8 +85,9 @@ for this backend) or one of:
 `effort` values are constrained globally to the dispatcher's vocabulary —
 `off|minimal|low|medium|high|xhigh|max` — on the CLI, in remembered
 defaults, and therefore for every profile; a backend whose effort words
-differ needs the mapping inside its own adapter. The dispatcher rejects
-`--provider` unless `--model` is also supplied, for every backend.
+differ needs the mapping inside its own adapter. Backend-specific identity
+pairing belongs in that backend's adapter; for example, Pi rejects a lone
+provider itself rather than imposing that rule on every profile.
 
 ## kind: adapter-prompt-file
 
@@ -97,16 +103,19 @@ The dispatcher runs:
 | --- | --- |
 | `path_tools` | `{"flag", "value"}` appended only in `review-paths` mode; `null` for none. |
 | `timeout_flag` | Flag used to forward the effective whole-task timeout; `null` to never forward. |
-| `env_hook` | `null` or `"login-zsh"`: capture the user's interactive login zsh environment in memory before spawn (overridable with `--shell-env inherit`). |
-| `env_hook_env` | Name of an environment variable that overrides the hook choice before the generic `INDEPENDENT_REVIEW_SHELL_ENV` fallback; `null` for none. |
 | `result.strategy` | `envelope` or `stdout-text`. |
 | `result.envelope_type` | For `envelope`: required `type` value of the adapter's JSON envelope. The envelope must carry a string `result` containing the review text and a `trace.outcome == "success"`. |
-| `prompt_limit` | `null` or `"half-arg-max"`: reject prompts above half the host argument-size limit before the backend starts (`not_started`). |
 
-Adapter-kind rules baked into the dispatcher: a non-zero exit reads the
-outcome from the adapter's stderr JSON diagnostic; any stderr output on a
-zero exit is `outcome=unknown`; the review text must be non-empty and carry
-a decisive verdict (see `references/result-contract.md`).
+Transport quirks such as login-shell capture, argv-size limits, and identity
+pairing are adapter responsibilities, not profile fields. Adapter-kind rules
+baked into the dispatcher: a non-zero exit must carry the standard diagnostic
+from [backend-integration.md](backend-integration.md); malformed diagnostics
+become `outcome=unknown`. Any stderr output on a zero exit is likewise
+`unknown`; review text must be non-empty and carry a decisive verdict.
+
+Every object layer is fail-closed: unknown top-level, `discovery`, `adapter`,
+`result`, `identity`, binary-spec, path-tool, or timeout fields invalidate the
+whole profile. A typo never silently degrades a safety setting.
 
 ## kind: argv-stdin-jsonl
 

@@ -58,7 +58,7 @@ authorize external actions, or change the result contract.
 
 Never run an interactive authentication flow, open a browser, source an
 unrequested profile, or print credential files. A profile's documented
-`login-zsh` environment hook may load the user's normal `.zshrc`; it keeps
+The Qoder adapter's `login-zsh` environment capture may load the user's normal `.zshrc`; it keeps
 environment values in memory and records only the selected runtime mode and
 shell path. Preserve only bounded task-relevant errors.
 

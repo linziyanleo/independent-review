@@ -113,7 +113,7 @@ Sources are listed per entry.
 - Session: every headless run persists a session (visible in the desktop
   app); no ephemeral flag found.
 - Suggested kind: `adapter-prompt-file` (no stdin prompt, no JSONL stream);
-  `prompt_limit: "half-arg-max"` mandatory since the prompt travels via argv.
+  the adapter must enforce its own safe argv-size limit before spawn.
 - Sources: <https://docs.z.ai/devpack/tool/zcode>,
   <https://raw.githubusercontent.com/dorukardahan/headless-relay/main/references/cli-reference.md>,
   <https://raw.githubusercontent.com/Q00/ouroboros/main/docs/runtime-guides/zcode.md>

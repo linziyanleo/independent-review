@@ -53,8 +53,8 @@ Other trace fields a result may carry:
 | --- | --- |
 | `backend_task_invocations` | Always `1` on success; present on every runner path. Use it, not the exit code, for round and billing accounting. |
 | `backend_trace` | The adapter envelope's own trace (envelope strategy only); may report effective identity. |
-| `shell_environment` / `shell_bin` | The selected environment hook mode and shell path, when a profile declares `login-zsh`. |
 | `binaries` | `{name: {path, sha256}}` for binaries the profile marks `trace_sha256`. |
+| `template` | Trusted review-template name, source (`bundled` or `user`), resolved path, and SHA-256. |
 | `stderr` | Bounded backend stderr (argv kind only). |
 
 The auxiliary commands emit their own JSON types on stdout:
@@ -63,6 +63,9 @@ for `prefs`. They share the failure diagnostic shape but are not review
 envelopes.
 
 On failure, stdout is empty and stderr contains one bounded JSON diagnostic.
+Adapter failures preserve the adapter's validated `kind`, `outcome`, bounded
+`details`, and exact `backend_task_invocations` count. A malformed adapter
+diagnostic becomes `unknown` because billing/delivery state cannot be trusted.
 Use these outcomes:
 
 | Outcome | Meaning | Retry rule |

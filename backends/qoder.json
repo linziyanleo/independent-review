@@ -16,18 +16,14 @@
     "adapter": {
       "env": "QODERCLI_TASK",
       "candidates": [
-        "{skill_dir}/../using-qodercli/scripts/qodercli-task.py",
-        "~/.agents/skills/using-qodercli/scripts/qodercli-task.py"
+        "{skill_dir}/scripts/adapters/qodercli-task.py"
       ]
     }
   },
   "adapter": {
     "path_tools": {"flag": "--tools", "value": "Read,Grep,Glob"},
     "timeout_flag": "--timeout-seconds",
-    "env_hook": "login-zsh",
-    "env_hook_env": "INDEPENDENT_REVIEW_QODER_SHELL_ENV",
-    "result": {"strategy": "stdout-text"},
-    "prompt_limit": "half-arg-max"
+    "result": {"strategy": "stdout-text"}
   },
   "identity": {
     "model": {"flag": "--model"},

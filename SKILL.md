@@ -52,10 +52,20 @@ concrete backend before passing model, provider, or agent identity.
 Before invoking a backend for the first time, read its profile `notes` file
 (from the `backends` listing) for runtime quirks. To understand or extend the
 profile format itself, read
-[backend-profile.md](references/backend-profile.md). New reviewer profiles
-belong in `~/.config/independent-review/backends/`, never in the reviewed
-repository; [candidate-backends.md](references/candidate-backends.md) collects
-researched invocation notes for CLIs not bundled yet.
+[backend-profile.md](references/backend-profile.md); the decision rule for
+whether a CLI needs an adapter, and the adapter contract, live in
+[backend-integration.md](references/backend-integration.md). New reviewer
+profiles belong in `~/.config/independent-review/backends/`, never in the
+reviewed repository;
+[candidate-backends.md](references/candidate-backends.md) collects researched
+invocation notes for CLIs not bundled yet.
+
+Review-type instructions are independently extensible templates. Use the
+bundled `default` template or select `--template <name>`; user templates live
+in `~/.config/independent-review/review-templates/<name>.md`. Templates carry
+only review-specific focus and output guidance. The dispatcher always adds
+the fixed read-only safety preamble, nonce fences, evidence scope, and minimum
+verdict contract, and never loads a user template from the reviewed checkout.
 
 ## Review Rounds
 
@@ -114,6 +124,7 @@ python3 "$INDEPENDENT_REVIEW" review-artifact \
   --backend <name> --effort high \
   --cwd "$REPO" \
   --artifact-file /path/to/plan.md \
+  --template default \
   --focus 'Find correctness gaps, missing gates, and overdesign.'
 ```
 

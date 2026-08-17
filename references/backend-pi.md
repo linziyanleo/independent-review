@@ -1,22 +1,24 @@
 # Pi Backend Notes
 
-Pi runs through the canonical controller from `using-pi-agent`:
+Pi runs through the SDK controller bundled with this skill:
 
 ```text
-~/.codex/skills/using-pi-agent/scripts/pi-agent-task.py
+scripts/adapters/pi-agent-task.py   (controller)
+scripts/adapters/pi-agent-bridge.mjs (Node SDK bridge)
 ```
 
-The bundled `backends/pi.json` profile discovers that controller (override with
-dispatcher `--adapter` or the `PI_AGENT_TASK` environment variable) and uses
-its `prompt` mode so every backend receives the same review prompt and JSON
-contract. It enables no tools for diff or artifact review and only
-`read,grep,find,ls` for path review.
+The bundled `backends/pi.json` profile discovers the controller from that
+location (override with dispatcher `--adapter` or the `PI_AGENT_TASK`
+environment variable) and uses its `prompt` mode so every backend receives
+the same review prompt and contract. It enables no tools for diff or
+artifact review and only `read,grep,find,ls` for path review. The host must
+provide the `pi` and `node` binaries and a valid Pi credential setup.
 
 ## Identity and effort
 
 Omit provider, model, and effort to inherit Pi's configured defaults. When a
 model is explicit, pass provider and model together — the profile marks the
-provider as requiring the model, and the dispatcher rejects a lone provider.
+provider and model capabilities, while the Pi adapter rejects a lone value.
 Pass an explicit effort as Pi `--effort`; never guess an unspecified effort.
 
 Pi validates and returns effective provider, model, and thinking level in its

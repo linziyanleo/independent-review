@@ -1,17 +1,19 @@
 # Qoder CLI Backend Notes
 
-Qoder runs through the canonical headless adapter from `using-qodercli`:
+Qoder runs through the headless adapter bundled with this skill:
 
 ```text
-~/.agents/skills/using-qodercli/scripts/qodercli-task.py
+scripts/adapters/qodercli-task.py
 ```
 
-The bundled `backends/qoder.json` profile discovers that adapter (override with
-dispatcher `--adapter` or the `QODERCLI_TASK` environment variable) and uses
-its `prompt` mode with one private prompt file. It enables no tools for diff or
-artifact review and only `Read,Grep,Glob` for path review. The adapter runs one
-stateless `qodercli -p` task with `--permission-mode dont_ask`, zero
-model-request retries, JSON validation, and no response file.
+The bundled `backends/qoder.json` profile discovers the adapter from that
+location (override with dispatcher `--adapter` or the `QODERCLI_TASK`
+environment variable) and uses its `prompt` mode with one private prompt
+file. It enables no tools for diff or artifact review and only
+`Read,Grep,Glob` for path review. The adapter runs one stateless
+`qodercli -p` task with `--permission-mode dont_ask`, zero model-request
+retries, JSON validation, and no response file. The host must provide the
+`qodercli` binary and a valid Qoder login.
 
 When multiple Qoder installations exist, select one before the model request:
 
@@ -32,15 +34,14 @@ installation.
 
 ## Runtime environment
 
-The profile declares the `login-zsh` environment hook. The dispatcher starts a
-bounded interactive login zsh environment capture, which loads the user's
-normal zsh startup sequence including `.zshrc`, then passes the captured
-environment only in memory to the Qoder adapter. Shell startup stderr is not
-mixed into the reviewer's strict result stream, and environment values are
-never written to the normalized trace.
+The Qoder adapter owns a bounded interactive login zsh environment capture,
+which loads the user's normal zsh startup sequence including `.zshrc` before
+resolving and spawning `qodercli`. Shell startup stderr is not mixed into the
+reviewer's strict result stream, and environment values are never emitted.
 
-Use `--shell-env inherit`, or set `INDEPENDENT_REVIEW_QODER_SHELL_ENV=inherit`,
-for CI and other processes whose environment is already authoritative. Loading
+Use adapter option `--shell-env inherit`, or set
+`INDEPENDENT_REVIEW_QODER_SHELL_ENV=inherit`, for CI and other processes whose
+environment is already authoritative. Loading
 the shell environment is a pre-model step: a missing, failed, oversized, or
 malformed environment is `outcome=not_started` with zero backend task
 invocations.
@@ -70,7 +71,7 @@ state:
 Do not retry automatically in any of these cases.
 
 Qoder's positional prompt transport can reach host argument-size limits for a
-very large frozen artifact; the profile declares the `half-arg-max` prompt
-limit so the dispatcher rejects oversized prompts before Qoder starts. Prefer a
+very large frozen artifact; the adapter rejects prompts above half the host
+argument-size limit before Qoder starts. Prefer a
 smaller final net diff, `review-paths`, or another backend instead of
 truncating evidence.

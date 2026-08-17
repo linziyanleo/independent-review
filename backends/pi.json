@@ -12,17 +12,14 @@
     "adapter": {
       "env": "PI_AGENT_TASK",
       "candidates": [
-        "{skill_dir}/../using-pi-agent/scripts/pi-agent-task.py",
-        "~/.codex/skills/using-pi-agent/scripts/pi-agent-task.py"
+        "{skill_dir}/scripts/adapters/pi-agent-task.py"
       ]
     }
   },
   "adapter": {
     "path_tools": {"flag": "--tools", "value": "read,grep,find,ls"},
     "timeout_flag": "--wall-timeout-seconds",
-    "env_hook": null,
-    "result": {"strategy": "envelope", "envelope_type": "pi_task_result"},
-    "prompt_limit": null
+    "result": {"strategy": "envelope", "envelope_type": "pi_task_result"}
   },
   "identity": {
     "provider": {"flag": "--provider"},
