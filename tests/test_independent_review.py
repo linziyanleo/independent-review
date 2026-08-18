@@ -206,6 +206,20 @@ class PromptTests(unittest.TestCase):
         self.assertNotIn("JSON object", prompt)
         self.assertNotIn("Template authoring notes", prompt)
 
+    def test_avoid_overengineering_template_injects_rules_not_selection_notes(self):
+        args = self.make_args(
+            mode="review-paths", paths="src", template="avoid-overengineering"
+        )
+        prompt = MODULE.build_prompt(args)
+
+        self.assertIn("Review for unnecessary complexity and overengineering", prompt)
+        self.assertIn("the smallest simpler design that still works end to end", prompt)
+        self.assertIn("Do not treat modularity", prompt)
+        self.assertNotIn("Template selection intent", prompt)
+        self.assertNotIn("Match the user's meaning", prompt)
+        self.assertEqual(args.template_trace["name"], "avoid-overengineering")
+        self.assertEqual(args.template_trace["source"], "bundled")
+
     def test_paths_prompt_names_scope_without_pasted_content(self):
         prompt = MODULE.build_prompt(
             self.make_args(mode="review-paths", paths="src/auth tests/auth")
