@@ -204,6 +204,7 @@ class PromptTests(unittest.TestCase):
         self.assertIn("Markdown prose", prompt)
         self.assertIn("approve, request_changes,\ninconclusive", prompt)
         self.assertNotIn("JSON object", prompt)
+        self.assertNotIn("Template authoring notes", prompt)
 
     def test_paths_prompt_names_scope_without_pasted_content(self):
         prompt = MODULE.build_prompt(
@@ -243,6 +244,98 @@ class PromptTests(unittest.TestCase):
             finally:
                 del os.environ["INDEPENDENT_REVIEW_HOME"]
         self.assertIn("Audit only public API compatibility", prompt)
+
+    def test_bundled_templates_select_distinct_rules_and_ignore_comments(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundled = root / "bundled"
+            user = root / "user"
+            bundled.mkdir()
+            user.mkdir()
+            security_source = (
+                "<!-- Author note that must not reach the reviewer. -->\n"
+                "Audit authentication boundaries and credential exposure.\n"
+            )
+            (bundled / "security.md").write_text(security_source, encoding="utf-8")
+            (bundled / "api-contract.md").write_text(
+                "Audit public API compatibility only.\n", encoding="utf-8"
+            )
+            args = self.make_args(
+                mode="review-paths", paths="src", template="security"
+            )
+            with mock.patch.object(
+                MODULE, "review_template_dirs", return_value=(bundled, user)
+            ):
+                prompt = MODULE.build_prompt(args)
+
+        rules = "Audit authentication boundaries and credential exposure."
+        self.assertIn(rules, prompt)
+        self.assertNotIn("Author note", prompt)
+        self.assertNotIn("Audit public API compatibility", prompt)
+        self.assertEqual(args.template_trace["name"], "security")
+        self.assertEqual(args.template_trace["source"], "bundled")
+        self.assertEqual(
+            args.template_trace["sha256"],
+            hashlib.sha256(security_source.encode("utf-8")).hexdigest(),
+        )
+        self.assertEqual(
+            args.template_trace["rules_sha256"],
+            hashlib.sha256(rules.encode("utf-8")).hexdigest(),
+        )
+
+    def test_user_template_overrides_bundled_template_with_the_same_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundled = root / "bundled"
+            user = root / "user"
+            bundled.mkdir()
+            user.mkdir()
+            (bundled / "security.md").write_text(
+                "Bundled security rules.\n", encoding="utf-8"
+            )
+            (user / "security.md").write_text(
+                "Host-local security rules.\n", encoding="utf-8"
+            )
+            args = self.make_args(
+                mode="review-paths", paths="src", template="security"
+            )
+            with mock.patch.object(
+                MODULE, "review_template_dirs", return_value=(bundled, user)
+            ):
+                prompt = MODULE.build_prompt(args, cwd=root / "checkout")
+
+        self.assertIn("Host-local security rules", prompt)
+        self.assertNotIn("Bundled security rules", prompt)
+        self.assertEqual(args.template_trace["source"], "user")
+
+    def test_invalid_or_comment_only_template_fails_before_review(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundled = root / "bundled"
+            user = root / "user"
+            bundled.mkdir()
+            user.mkdir()
+            cases = (
+                ("broken", "<!-- missing close\nRules leak.\n", "invalid_template_comments"),
+                ("notes-only", "<!-- author notes only -->\n", "empty_template_rules"),
+            )
+            for name, source, expected_kind in cases:
+                (bundled / f"{name}.md").write_text(source, encoding="utf-8")
+                stderr = io.StringIO()
+                with (
+                    self.subTest(name=name),
+                    mock.patch.object(
+                        MODULE, "review_template_dirs", return_value=(bundled, user)
+                    ),
+                    contextlib.redirect_stderr(stderr),
+                    self.assertRaises(SystemExit) as raised,
+                ):
+                    MODULE.load_review_template(name, root / "checkout", 1024)
+                self.assertEqual(raised.exception.code, 64)
+                diagnostic = json.loads(stderr.getvalue())
+                self.assertEqual(diagnostic["kind"], expected_kind)
+                self.assertEqual(diagnostic["outcome"], "not_started")
+                self.assertEqual(diagnostic["backend_task_invocations"], 0)
 
     def test_checkout_template_symlink_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -625,6 +718,12 @@ class DispatcherIntegrationTests(unittest.TestCase):
         self.assertIn("## Summary", result["review"]["text"])
         self.assertEqual(result["trace"]["profile"]["source"], "user")
         self.assertEqual(result["trace"]["profile"]["kind"], "adapter-prompt-file")
+        template_trace = result["trace"]["template"]
+        self.assertEqual(template_trace["name"], "default")
+        self.assertEqual(template_trace["source"], "bundled")
+        self.assertRegex(template_trace["sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(template_trace["rules_sha256"], r"^[0-9a-f]{64}$")
+        self.assertNotEqual(template_trace["sha256"], template_trace["rules_sha256"])
 
     def test_adapter_binary_override_is_forwarded_and_traced(self):
         selected_dir = self.directory / "selected"

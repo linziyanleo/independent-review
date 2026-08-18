@@ -111,11 +111,15 @@ CLI 的调研笔记见
 
 ## 新增评审类型
 
-把 `<name>.md` 放入
-`~/.config/independent-review/review-templates/`，再传
-`--template <name>`。模板只承载该评审类型的关注点与输出指引；固定的安全
-前言、输入围栏、证据范围和裁决契约仍由 dispatcher 持有。用户模板绝不从
-被审 checkout 加载。
+在 `references/review-templates/` 下增加可信的内置 `<name>.md`，或在
+`~/.config/independent-review/review-templates/` 下增加主机本地模板，再传
+`--template <name>`。同名时主机本地模板覆盖内置模板；模板名只使用小写
+字母、数字和连字符。
+
+模板只承载该评审类型的关注点与输出指引；固定的安全前言、输入围栏、证据
+范围和裁决契约仍由 dispatcher 持有。作者说明使用配对且不嵌套的 HTML
+注释，dispatcher 在注入所选规则前移除这些注释，并拒绝注释未闭合或移除
+注释后为空的模板。用户模板绝不从被审 checkout 加载。
 
 ## 安全
 

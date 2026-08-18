@@ -122,12 +122,18 @@ for researched invocation notes on several popular CLIs.
 
 ## Add a review type
 
-Drop `<name>.md` into
+Add a trusted bundled `<name>.md` under `references/review-templates/`, or a
+host-local template under
 `~/.config/independent-review/review-templates/`, then pass
-`--template <name>`. A template contains only review-specific focus and output
-guidance; the dispatcher keeps the fixed safety preamble, input fences, scope,
-and verdict contract. User templates are never loaded from the reviewed
-checkout.
+`--template <name>`. A host-local template overrides a bundled template with
+the same name. Template names use lowercase letters, digits, and hyphens.
+
+A template contains only review-specific focus and output guidance; the
+dispatcher keeps the fixed safety preamble, input fences, scope, and verdict
+contract. Put author-facing notes in balanced, non-nested HTML comments. The
+dispatcher removes those comments before injecting the selected rules and
+rejects malformed or comment-only templates. User templates are never loaded
+from the reviewed checkout.
 
 ## Safety
 

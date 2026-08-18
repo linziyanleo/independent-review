@@ -49,6 +49,7 @@ IDENTITY_KEYS = ("provider", "model", "effort", "agent")
 PREFS_KEYS = ("backend", "model", "effort", "provider", "agent", "rounds")
 PREFS_SCOPES = ("default", "host", "project")
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+REVIEW_TEMPLATE_COMMENT_PATTERN = re.compile(r"<!--.*?-->", re.DOTALL)
 TOP_LEVEL_FIELDS = {
     "schema_version", "name", "display_name", "kind", "auto_priority",
     "discovery", "identity", "timeouts", "notes", "command", "adapter", "result",
@@ -69,6 +70,10 @@ class ReviewPayloadError(ValueError):
 
 
 class ProfileError(ValueError):
+    pass
+
+
+class ReviewTemplateError(ValueError):
     pass
 
 
@@ -671,7 +676,11 @@ def add_review_arguments(parser: argparse.ArgumentParser) -> None:
         help="Profile name, or auto; omitted lets remembered defaults choose",
     )
     parser.add_argument("--cwd", default=os.getcwd())
-    parser.add_argument("--template", default="default")
+    parser.add_argument(
+        "--template",
+        default="default",
+        help="Review-rule template name from a trusted review-templates directory",
+    )
     parser.add_argument("--focus")
     parser.add_argument("--rebuttal-file")
     parser.add_argument("--model")
@@ -760,6 +769,18 @@ def review_template_dirs() -> tuple[Path, Path]:
     return (skill_dir() / "references" / "review-templates", config_home() / "review-templates")
 
 
+def strip_review_template_comments(text: str) -> str:
+    """Remove balanced HTML comments while preserving rule separation."""
+
+    def replace_comment(match: re.Match[str]) -> str:
+        return "\n" * max(1, match.group(0).count("\n"))
+
+    rules = REVIEW_TEMPLATE_COMMENT_PATTERN.sub(replace_comment, text)
+    if "<!--" in rules or "-->" in rules:
+        raise ReviewTemplateError("HTML comments must be balanced and cannot be nested")
+    return rules.strip()
+
+
 def load_review_template(name: str, cwd: Path, max_bytes: int) -> tuple[str, dict[str, str]]:
     if not NAME_PATTERN.fullmatch(name):
         fail(
@@ -813,12 +834,34 @@ def load_review_template(name: str, cwd: Path, max_bytes: int) -> tuple[str, dic
             template=name,
             path=str(resolved),
         )
-    text = read_utf8(str(resolved), "review template", max_bytes)
-    return text, {
+    source_text = read_utf8(str(resolved), "review template", max_bytes)
+    try:
+        rules = strip_review_template_comments(source_text)
+    except ReviewTemplateError as exc:
+        fail(
+            "invalid_template_comments",
+            EXIT_USAGE,
+            outcome="not_started",
+            backend_task_invocations=0,
+            template=name,
+            path=str(resolved),
+            detail=str(exc),
+        )
+    if not rules:
+        fail(
+            "empty_template_rules",
+            EXIT_USAGE,
+            outcome="not_started",
+            backend_task_invocations=0,
+            template=name,
+            path=str(resolved),
+        )
+    return rules, {
         "name": name,
         "source": source,
         "path": str(resolved),
-        "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "sha256": hashlib.sha256(source_text.encode("utf-8")).hexdigest(),
+        "rules_sha256": hashlib.sha256(rules.encode("utf-8")).hexdigest(),
     }
 
 

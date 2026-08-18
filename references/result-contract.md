@@ -54,7 +54,7 @@ Other trace fields a result may carry:
 | `backend_task_invocations` | Always `1` on success; present on every runner path. Use it, not the exit code, for round and billing accounting. |
 | `backend_trace` | The adapter envelope's own trace (envelope strategy only); may report effective identity. |
 | `binaries` | `{name: {path, sha256}}` for binaries the profile marks `trace_sha256`; `path` is the validated absolute selection (including an intentional symlink), and adapter profiles with `adapter_flag` execute that exact selection. |
-| `template` | Trusted review-template name, source (`bundled` or `user`), resolved path, and SHA-256. |
+| `template` | Trusted review-template name, source (`bundled` or `user`), resolved path, source-file `sha256`, and injected `rules_sha256` after author-only HTML comments are removed. |
 | `stderr` | Bounded backend stderr (argv kind only). |
 
 The auxiliary commands emit their own JSON types on stdout:

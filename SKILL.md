@@ -61,11 +61,14 @@ reviewed repository;
 invocation notes for CLIs not bundled yet.
 
 Review-type instructions are independently extensible templates. Use the
-bundled `default` template or select `--template <name>`; user templates live
-in `~/.config/independent-review/review-templates/<name>.md`. Templates carry
-only review-specific focus and output guidance. The dispatcher always adds
-the fixed read-only safety preamble, nonce fences, evidence scope, and minimum
-verdict contract, and never loads a user template from the reviewed checkout.
+bundled `default` template or select `--template <name>`. Trusted bundled rules
+live in `references/review-templates/<name>.md`; host-local rules live in
+`~/.config/independent-review/review-templates/<name>.md` and override a bundled
+template with the same name. Templates carry only review-specific focus and
+output guidance. Balanced HTML comments are author notes and are removed before
+injection. The dispatcher always adds the fixed read-only safety preamble,
+nonce fences, evidence scope, and minimum verdict contract, and never loads a
+user template from the reviewed checkout.
 
 ## Review Rounds
 
