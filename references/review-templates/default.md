@@ -4,6 +4,8 @@ Template authoring notes; the dispatcher removes this comment before injection.
 - A template contains only review-specific focus and output guidance. The
   dispatcher owns the fixed safety preamble, evidence fences, scope, and
   verdict contract.
+- Selection intent: use this template for a broad final review when the user
+  does not request a more specific review goal.
 - Add another trusted bundled template as <name>.md in this directory and
   select it with --template <name>. Names use lowercase letters, digits, and
   hyphens.

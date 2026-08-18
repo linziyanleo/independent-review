@@ -1,6 +1,6 @@
 ---
 name: independent-review
-description: Run one independent, read-only review through a configurable reviewer CLI backend, with remembered per-project, per-host, and global default settings, a bounded round budget, and adversarial rebuttal of disputed findings. Use for final code or plan review, second opinions, security or concurrency review, frozen diff review, trusted-path execution tracing, and review gates that require structured findings, explicit evidence gaps, backend failure classification, and local verification before acceptance.
+description: Run one independent, read-only review through a configurable reviewer CLI backend, with remembered per-project, per-host, and global default settings, a bounded round budget, and adversarial rebuttal of disputed findings. Use for final code or plan review, second opinions, security, concurrency, or overengineering review, frozen diff review, trusted-path execution tracing, and review gates that require structured findings, explicit evidence gaps, backend failure classification, and local verification before acceptance.
 ---
 
 # Independent Review
@@ -69,6 +69,13 @@ output guidance. Balanced HTML comments are author notes and are removed before
 injection. The dispatcher always adds the fixed read-only safety preamble,
 nonce fences, evidence scope, and minimum verdict contract, and never loads a
 user template from the reviewed checkout.
+
+Honor an explicitly named template. When the user instead describes the review
+goal in natural language, inspect the author comments in the available trusted
+templates and choose the single best semantic match; do not use a fixed keyword
+map or infer from the filename alone. Use `default` when no template is a clear
+match. Put secondary concerns in `--focus` rather than blending template bodies,
+and tell the user which template was selected before starting the paid round.
 
 ## Review Rounds
 

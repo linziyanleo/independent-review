@@ -135,6 +135,13 @@ dispatcher removes those comments before injecting the selected rules and
 rejects malformed or comment-only templates. User templates are never loaded
 from the reviewed checkout.
 
+An agent using the skill honors an explicitly named template. If the request
+describes the review goal in natural language, it reads the trusted templates'
+author comments and selects the closest semantic match, falling back to
+`default` when the intent is ambiguous. For example, a request to challenge
+unnecessary abstraction or complexity selects `avoid-overengineering` without
+requiring the caller to know that template name.
+
 ## Safety
 
 - The reviewer is read-only; pasted-content modes expose no tools at all.
