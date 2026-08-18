@@ -9,7 +9,7 @@
       "qodercli": {
         "env": "INDEPENDENT_REVIEW_QODERCLI_BIN",
         "basename": "qodercli",
-        "prepend_to_path": true,
+        "adapter_flag": "--qodercli-bin",
         "trace_sha256": true
       }
     },

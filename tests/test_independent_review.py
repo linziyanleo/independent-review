@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -366,6 +367,26 @@ class ProfileTests(unittest.TestCase):
             with self.subTest(path=path, typo=typo), self.assertRaises(MODULE.ProfileError):
                 MODULE.validate_profile(raw, "test")
 
+    def test_binary_adapter_flags_are_adapter_only_and_unique(self):
+        argv_profile = json.loads(
+            (SKILL_ROOT / "backends" / "codex.json").read_text(encoding="utf-8")
+        )
+        binary_name = next(iter(argv_profile["discovery"]["binaries"]))
+        argv_profile["discovery"]["binaries"][binary_name]["adapter_flag"] = "--binary"
+        with self.assertRaises(MODULE.ProfileError):
+            MODULE.validate_profile(argv_profile, "test")
+
+        adapter = adapter_profile(
+            "duplicate-flags",
+            "/tmp/fake-adapter",
+            binaries={
+                "first": {"adapter_flag": "--binary"},
+                "second": {"adapter_flag": "--binary"},
+            },
+        )
+        with self.assertRaises(MODULE.ProfileError):
+            MODULE.validate_profile(adapter, "test")
+
 
 class PrefsUnitTests(unittest.TestCase):
     def test_effective_prefs_merges_default_host_project(self):
@@ -566,6 +587,60 @@ class DispatcherIntegrationTests(unittest.TestCase):
         self.assertIn("## Summary", result["review"]["text"])
         self.assertEqual(result["trace"]["profile"]["source"], "user")
         self.assertEqual(result["trace"]["profile"]["kind"], "adapter-prompt-file")
+
+    def test_adapter_binary_override_is_forwarded_and_traced(self):
+        selected_dir = self.directory / "selected"
+        selected_dir.mkdir()
+        store_dir = self.directory / "store"
+        store_dir.mkdir()
+        binary_target = store_dir / "fake-reviewer-real"
+        self.write_executable(binary_target, "#!/bin/sh\n")
+        selected_bin = selected_dir / "fake-reviewer"
+        selected_bin.symlink_to(binary_target)
+        text = review_text()
+        adapter = self.fake_adapter(
+            "binary-aware",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            f"expected = {str(selected_bin)!r}\n"
+            "index = sys.argv.index('--reviewer-bin')\n"
+            "if sys.argv[index + 1] != expected:\n"
+            "    raise SystemExit(2)\n"
+            f"print({text!r})\n",
+        )
+        profile = adapter_profile(
+            "binary-aware",
+            adapter,
+            binaries={
+                "fake-reviewer": {
+                    "basename": "fake-reviewer",
+                    "adapter_flag": "--reviewer-bin",
+                    "trace_sha256": True,
+                }
+            },
+        )
+        self.write_profile(profile)
+        completed = self.run_dispatcher(
+            "review-paths",
+            "--backend",
+            "binary-aware",
+            "--bin",
+            f"fake-reviewer={selected_bin}",
+            "--cwd",
+            str(self.workdir),
+            "--paths",
+            "src tests",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(
+            result["trace"]["binaries"]["fake-reviewer"]["path"],
+            str(selected_bin),
+        )
+        self.assertEqual(
+            result["trace"]["binaries"]["fake-reviewer"]["sha256"],
+            hashlib.sha256(binary_target.read_bytes()).hexdigest(),
+        )
 
     def test_prose_without_verdict_is_unknown_not_approval(self):
         adapter = self.stdout_adapter(

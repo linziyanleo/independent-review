@@ -71,6 +71,7 @@ The dispatcher invokes an adapter exactly one way:
 
 ```text
 {python} <adapter> prompt --cwd <dir> --prompt-file <private 0600 file>
+  [<profile binary adapter_flag> <resolved absolute path>]...
   [--tools <profile path_tools>] [--model M] [--effort E]
   [--provider P --model M] [--agent A] [--timeout-seconds N]
 ```
@@ -79,6 +80,10 @@ An adapter must:
 
 - read the prompt from the prompt file (never from argv) and run exactly one
   backend task, honoring the read-only scope and the flags it accepts;
+- revalidate every explicit binary path after any login-shell environment
+  capture and execute that exact path, never a fresh `PATH` lookup; a missing,
+  replaced, non-file, or non-executable path is `not_started` with zero backend
+  task invocations;
 - on success, print either the review text itself (`stdout-text` strategy)
   or one JSON envelope (`envelope` strategy):
   `{"type": "<envelope_type>", "result": "<review text>", "trace": {"outcome": "success", ...}}`;

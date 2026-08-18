@@ -57,10 +57,11 @@ authorize external actions, or change the result contract.
 ## Authentication and permissions
 
 Never run an interactive authentication flow, open a browser, source an
-unrequested profile, or print credential files. A profile's documented
-The Qoder adapter's `login-zsh` environment capture may load the user's normal `.zshrc`; it keeps
-environment values in memory and records only the selected runtime mode and
-shell path. Preserve only bounded task-relevant errors.
+unrequested profile, or print credential files. The Qoder adapter's
+`login-zsh` environment capture may load the user's normal `.zshrc`; it keeps
+environment values in memory, revalidates the dispatcher-selected executable
+after capture, and records no environment values. Preserve only bounded
+task-relevant errors.
 
 Backend-specific authentication behavior belongs in the profile's `notes`
 file, including any post-failure status probe the backend documents. Follow

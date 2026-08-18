@@ -43,7 +43,7 @@ extension that requires dispatcher code.
     "qodercli": {
       "env": "INDEPENDENT_REVIEW_QODERCLI_BIN",
       "basename": "qodercli",
-      "prepend_to_path": true,
+      "adapter_flag": "--qodercli-bin",
       "trace_sha256": true
     }
   },
@@ -59,8 +59,14 @@ extension that requires dispatcher code.
   environment variable, then `PATH` lookup.
 - `basename`: an explicit `--bin`/env path must carry this exact file name.
   Prevents pointing a profile's trust assumptions at an arbitrary binary.
+- `adapter_flag`: for `adapter-prompt-file`, pass the resolved absolute path as
+  `<adapter_flag> <path>` so discovery, execution, and trace refer to the same
+  executable. Adapter flags must be unique inside one profile and are invalid
+  for argv profiles, which use `{bin:<name>}` placeholders instead.
 - `prepend_to_path`: the resolved binary's directory is prepended to the
-  child process `PATH`.
+  child process `PATH`. This is optional supporting environment setup, not an
+  exact binary-selection mechanism; use `adapter_flag` when the adapter starts
+  the declared executable.
 - `trace_sha256`: the resolved binary's absolute path and SHA-256 are recorded
   in the normalized trace.
 - `adapter` is required for `adapter-prompt-file` profiles. `env` overrides the
@@ -95,6 +101,7 @@ The dispatcher runs:
 
 ```text
 {python} <adapter> prompt --cwd {cwd} --prompt-file <private 0600 file>
+  [<binary adapter_flag> <resolved absolute path>]...
 ```
 
 `adapter` section fields:
@@ -106,12 +113,15 @@ The dispatcher runs:
 | `result.strategy` | `envelope` or `stdout-text`. |
 | `result.envelope_type` | For `envelope`: required `type` value of the adapter's JSON envelope. The envelope must carry a string `result` containing the review text and a `trace.outcome == "success"`. |
 
-Transport quirks such as login-shell capture, argv-size limits, and identity
-pairing are adapter responsibilities, not profile fields. Adapter-kind rules
-baked into the dispatcher: a non-zero exit must carry the standard diagnostic
-from [backend-integration.md](backend-integration.md); malformed diagnostics
-become `outcome=unknown`. Any stderr output on a zero exit is likewise
-`unknown`; review text must be non-empty and carry a decisive verdict.
+An adapter that accepts a declared binary flag must revalidate the path before
+the backend task starts and execute that exact path; it must not replace the
+selection with a later `PATH` lookup. Transport quirks such as login-shell
+capture, argv-size limits, and identity pairing remain adapter
+responsibilities. Adapter-kind rules baked into the dispatcher: a non-zero
+exit must carry the standard diagnostic from
+[backend-integration.md](backend-integration.md); malformed diagnostics become
+`outcome=unknown`. Any stderr output on a zero exit is likewise `unknown`;
+review text must be non-empty and carry a decisive verdict.
 
 Every object layer is fail-closed: unknown top-level, `discovery`, `adapter`,
 `result`, `identity`, binary-spec, path-tool, or timeout fields invalidate the

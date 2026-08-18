@@ -105,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cwd", default=os.getcwd())
     parser.add_argument("--prompt-file", required=True)
     parser.add_argument("--tools")
+    parser.add_argument("--qodercli-bin")
     parser.add_argument("--max-output-tokens", type=positive_int, default=4096)
     parser.add_argument("--agent", default="general-purpose")
     parser.add_argument("--model")
@@ -117,6 +118,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-capture-bytes", type=positive_int, default=DEFAULT_MAX_CAPTURE_BYTES
     )
     return parser
+
+
+def resolve_executable(explicit: str | None, name: str, search_path: str | None) -> str | None:
+    if explicit is None:
+        return shutil.which(name, path=search_path)
+    candidate = Path(explicit).expanduser()
+    if not candidate.is_absolute():
+        return None
+    try:
+        candidate.resolve(strict=True)
+    except OSError:
+        return None
+    if candidate.name != name or not candidate.is_file() or not os.access(candidate, os.X_OK):
+        return None
+    return str(candidate)
 
 
 def read_utf8_file(parser: argparse.ArgumentParser, value: str, label: str) -> str:
@@ -467,7 +483,9 @@ def main() -> int:
     if shell_mode == "login-zsh":
         runtime_env = login_zsh_environment(runtime_env)
 
-    qodercli_bin = shutil.which("qodercli", path=runtime_env.get("PATH"))
+    qodercli_bin = resolve_executable(
+        args.qodercli_bin, "qodercli", runtime_env.get("PATH")
+    )
     if not qodercli_bin:
         fail(
             "qodercli_not_found",

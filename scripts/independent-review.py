@@ -92,6 +92,14 @@ def bounded_text(value: str, limit: int = ERROR_TEXT_LIMIT) -> dict[str, Any]:
     }
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def fail(kind: str, exit_code: int, **details: Any) -> NoReturn:
     payload = {
         "type": "independent_review_diagnostic",
@@ -141,18 +149,24 @@ def validate_binary_spec(name: str, spec: Any) -> dict[str, Any]:
     if not NAME_PATTERN.fullmatch(name):
         raise ProfileError(f"discovery binary name must match {NAME_PATTERN.pattern}: {name}")
     require_type(spec, dict, f"discovery.binaries.{name}")
-    allowed = {"env", "basename", "prepend_to_path", "trace_sha256"}
+    allowed = {"env", "basename", "adapter_flag", "prepend_to_path", "trace_sha256"}
     unknown = sorted(set(spec) - allowed)
     if unknown:
         raise ProfileError(f"discovery.binaries.{name} has unknown fields {unknown}")
     env = optional_string(spec.get("env"), f"discovery.binaries.{name}.env")
     basename = optional_string(spec.get("basename"), f"discovery.binaries.{name}.basename")
+    adapter_flag = optional_string(
+        spec.get("adapter_flag"), f"discovery.binaries.{name}.adapter_flag"
+    )
+    if adapter_flag and not adapter_flag.startswith("-"):
+        raise ProfileError(f"discovery.binaries.{name}.adapter_flag must be an option flag")
     for flag in ("prepend_to_path", "trace_sha256"):
         if flag in spec and not isinstance(spec[flag], bool):
             raise ProfileError(f"discovery.binaries.{name}.{flag} must be boolean")
     return {
         "env": env,
         "basename": basename,
+        "adapter_flag": adapter_flag,
         "prepend_to_path": bool(spec.get("prepend_to_path")),
         "trace_sha256": bool(spec.get("trace_sha256")),
     }
@@ -238,6 +252,11 @@ def validate_profile(raw: Any, origin: str) -> dict[str, Any]:
         raise ProfileError(f"discovery has unknown fields {unknown_discovery}")
     binaries_raw = require_type(discovery.get("binaries", {}), dict, "discovery.binaries")
     binaries = {key: validate_binary_spec(key, value) for key, value in binaries_raw.items()}
+    adapter_flags = [spec["adapter_flag"] for spec in binaries.values() if spec["adapter_flag"]]
+    if kind != "adapter-prompt-file" and adapter_flags:
+        raise ProfileError("discovery binary adapter_flag is only valid for adapter-prompt-file")
+    if len(adapter_flags) != len(set(adapter_flags)):
+        raise ProfileError("discovery binary adapter_flag values must be unique")
     adapter_discovery = None
     if kind == "adapter-prompt-file":
         adapter_raw = require_type(discovery.get("adapter"), dict, "discovery.adapter")
@@ -1331,7 +1350,7 @@ def trace_binaries(profile: dict[str, Any], runtime: dict[str, Any]) -> dict[str
         resolved = Path(path)
         recorded[name] = {
             "path": str(resolved),
-            "sha256": hashlib.sha256(resolved.read_bytes()).hexdigest(),
+            "sha256": sha256_file(resolved),
         }
     return recorded
 
@@ -1354,6 +1373,10 @@ def run_adapter_profile(
         "--prompt-file",
         str(prompt_path),
     ]
+    for binary_name, binary_path in runtime["binaries"].items():
+        adapter_flag = profile["discovery"]["binaries"][binary_name]["adapter_flag"]
+        if adapter_flag:
+            command.extend([adapter_flag, binary_path])
     if args.mode == "review-paths" and adapter_section["path_tools"]:
         command.extend([adapter_section["path_tools"]["flag"], adapter_section["path_tools"]["value"]])
     identity = profile["identity"]

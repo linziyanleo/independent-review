@@ -26,18 +26,20 @@ python3 "$INDEPENDENT_REVIEW" review-paths \
 ```
 
 The profile requires the file name `qodercli` for any explicit or
-environment-selected binary, prepends that binary's directory to the adapter
-environment, then records the resolved absolute path and SHA-256 in its
-normalized trace. Set `INDEPENDENT_REVIEW_QODERCLI_BIN` for a durable
-non-secret default. Never infer authentication state from another Qoder
-installation.
+environment-selected binary, passes its resolved absolute path to the adapter
+as `--qodercli-bin`, then records that path and SHA-256 in the normalized trace.
+Set `INDEPENDENT_REVIEW_QODERCLI_BIN` for a durable non-secret default. Never
+infer authentication state from another Qoder installation.
 
 ## Runtime environment
 
 The Qoder adapter owns a bounded interactive login zsh environment capture,
 which loads the user's normal zsh startup sequence including `.zshrc` before
-resolving and spawning `qodercli`. Shell startup stderr is not mixed into the
-reviewer's strict result stream, and environment values are never emitted.
+spawning `qodercli`. After capture it revalidates and directly executes the
+explicit path selected by the dispatcher; a startup file cannot redirect the
+request to another same-named installation through `PATH`. Shell startup
+stderr is not mixed into the reviewer's strict result stream, and environment
+values are never emitted.
 
 Use adapter option `--shell-env inherit`, or set
 `INDEPENDENT_REVIEW_QODER_SHELL_ENV=inherit`, for CI and other processes whose

@@ -6,8 +6,16 @@
   "auto_priority": 10,
   "discovery": {
     "binaries": {
-      "pi": {},
-      "node": {}
+      "pi": {
+        "basename": "pi",
+        "adapter_flag": "--pi-bin",
+        "trace_sha256": true
+      },
+      "node": {
+        "basename": "node",
+        "adapter_flag": "--node-bin",
+        "trace_sha256": true
+      }
     },
     "adapter": {
       "env": "PI_AGENT_TASK",

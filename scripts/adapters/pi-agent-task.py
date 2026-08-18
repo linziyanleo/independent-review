@@ -309,6 +309,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cwd", default=os.getcwd())
     parser.add_argument("--prompt-file")
     parser.add_argument("--tools")
+    parser.add_argument("--pi-bin")
+    parser.add_argument("--node-bin")
     parser.add_argument("--provider")
     parser.add_argument("--model")
     parser.add_argument(
@@ -363,6 +365,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-result-bytes", type=positive_int, default=DEFAULT_MAX_RESULT_BYTES
     )
     return parser
+
+
+def resolve_executable(explicit: str | None, name: str) -> str | None:
+    if explicit is None:
+        return shutil.which(name)
+    candidate = Path(explicit).expanduser()
+    if not candidate.is_absolute():
+        return None
+    try:
+        candidate.resolve(strict=True)
+    except OSError:
+        return None
+    if candidate.name != name or not candidate.is_file() or not os.access(candidate, os.X_OK):
+        return None
+    return str(candidate)
 
 
 def read_utf8_file(parser: argparse.ArgumentParser, value: str, label: str) -> str:
@@ -716,8 +733,8 @@ def main() -> int:
         parser.error(f"--cwd is not a directory: {cwd}")
     cwd = cwd.resolve()
 
-    node_bin = shutil.which("node")
-    pi_bin = shutil.which("pi")
+    node_bin = resolve_executable(args.node_bin, "node")
+    pi_bin = resolve_executable(args.pi_bin, "pi")
     if not node_bin or not pi_bin:
         missing = "node" if not node_bin else "pi"
         fail(
