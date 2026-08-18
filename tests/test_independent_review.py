@@ -14,6 +14,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/independent-review.py"
@@ -150,7 +151,7 @@ class VerdictExtractionTests(unittest.TestCase):
         with self.assertRaises(MODULE.ReviewPayloadError):
             MODULE.extract_verdict("I looked at the code and have some thoughts.")
 
-    def test_parse_review_result_keeps_text_verbatim(self):
+    def test_parse_review_result_preserves_natural_markdown(self):
         text = review_text("approve")
         result = MODULE.parse_review_result(text, 1024 * 1024)
         self.assertEqual(result["verdict"], "approve")
@@ -333,7 +334,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(order, ["pi", "qoder", "codex"])
 
     def test_bundled_adapters_resolve_inside_the_skill(self):
-        # The skill is self-contained: pi/qoder adapter candidates resolve to
+        # The skill is self-contained: bundled adapter candidates resolve to
         # scripts/adapters/ with no external skill installation.
         with tempfile.TemporaryDirectory() as directory:
             os.environ["INDEPENDENT_REVIEW_HOME"] = directory
@@ -341,7 +342,7 @@ class ProfileTests(unittest.TestCase):
                 entries = MODULE.discover_profiles()
             finally:
                 del os.environ["INDEPENDENT_REVIEW_HOME"]
-        for name in ("pi", "qoder"):
+        for name in ("pi", "qoder", "dsh"):
             discovery = entries[name]["profile"]["discovery"]["adapter"]
             adapter = MODULE.resolve_adapter(discovery, None)
             self.assertIsNotNone(adapter, name)
@@ -386,6 +387,43 @@ class ProfileTests(unittest.TestCase):
         )
         with self.assertRaises(MODULE.ProfileError):
             MODULE.validate_profile(adapter, "test")
+
+    def test_null_auto_priority_makes_dsh_explicit_only(self):
+        raw = json.loads((SKILL_ROOT / "backends" / "dsh.json").read_text(encoding="utf-8"))
+        profile = MODULE.validate_profile(raw, "test")
+        self.assertIsNone(profile["auto_priority"])
+
+        missing = json.loads(json.dumps(raw))
+        del missing["auto_priority"]
+        with self.assertRaises(MODULE.ProfileError):
+            MODULE.validate_profile(missing, "test")
+
+        for value in (True, "90", 1.5):
+            with self.subTest(value=value):
+                mutated = json.loads(json.dumps(raw))
+                mutated["auto_priority"] = value
+                with self.assertRaises(MODULE.ProfileError):
+                    MODULE.validate_profile(mutated, "test")
+
+    def test_dsh_requires_the_direct_cli_and_rejects_old_alternative_fields(self):
+        raw = json.loads((SKILL_ROOT / "backends" / "dsh.json").read_text(encoding="utf-8"))
+        profile = MODULE.validate_profile(raw, "test")
+        with mock.patch.object(MODULE.shutil, "which", return_value=None) as which:
+            runtime, missing = MODULE.resolve_profile_runtime(profile, {}, None)
+        which.assert_called_once_with("dsh")
+        self.assertEqual(runtime["binaries"], {})
+        self.assertIn("binary:dsh", missing)
+
+        for field, value in (("binary_groups", [["dsh"], ["pnpm"]]),):
+            mutated = json.loads(json.dumps(raw))
+            mutated["discovery"][field] = value
+            with self.subTest(field=field), self.assertRaises(MODULE.ProfileError):
+                MODULE.validate_profile(mutated, "test")
+
+        mutated = json.loads(json.dumps(raw))
+        mutated["discovery"]["binaries"]["dsh"]["optional"] = True
+        with self.assertRaises(MODULE.ProfileError):
+            MODULE.validate_profile(mutated, "test")
 
 
 class PrefsUnitTests(unittest.TestCase):
@@ -700,7 +738,7 @@ class DispatcherIntegrationTests(unittest.TestCase):
             "display_name": "Fake argv backend",
             "kind": "argv-stdin-jsonl",
             "auto_priority": 50,
-            "discovery": {"binaries": {"fakecodex": {}}},
+            "discovery": {"binaries": {"fakecodex": {"trace_sha256": True}}},
             "command": ["{bin:fakecodex}", "--cd", "{cwd}", "-"],
             "identity": {"model": {"flag": "--model"}, "effort": None,
                          "provider": None, "agent": None},
@@ -716,6 +754,11 @@ class DispatcherIntegrationTests(unittest.TestCase):
         result = json.loads(completed.stdout)
         self.assertEqual(result["review"]["verdict"], "request_changes")
         self.assertEqual(result["trace"]["backend_task_invocations"], 1)
+        self.assertEqual(result["trace"]["binaries"]["fakecodex"]["path"], str(fake_bin))
+        self.assertEqual(
+            result["trace"]["binaries"]["fakecodex"]["sha256"],
+            hashlib.sha256(fake_bin.read_bytes()).hexdigest(),
+        )
 
     def test_identity_flag_rejected_when_profile_lacks_capability(self):
         adapter = self.stdout_adapter("plaincli")
@@ -827,6 +870,8 @@ class DispatcherIntegrationTests(unittest.TestCase):
         self.assertTrue(by_name["listcli"]["available"])
         self.assertFalse(by_name["listcli"]["auto"])
         self.assertIn("codex", by_name)
+        self.assertIn("dsh", by_name)
+        self.assertFalse(by_name["dsh"]["auto"])
 
     def test_prefs_unset_without_keys_clears_scope(self):
         self.run_dispatcher(
@@ -859,17 +904,27 @@ class DispatcherIntegrationTests(unittest.TestCase):
         store = json.loads((self.home / "preferences.json").read_text(encoding="utf-8"))
         self.assertEqual(set(store["hosts"]), {f"host-{index}" for index in range(count)})
 
-    def test_config_home_inside_checkout_is_rejected(self):
+    def test_config_home_and_checkout_must_be_disjoint(self):
         inside = self.workdir / "review-home"
-        completed = self.run_dispatcher(
-            "review-paths", "--backend", "fakecli", "--cwd", str(self.workdir),
-            "--paths", "src tests",
-            env_extra={"INDEPENDENT_REVIEW_HOME": str(inside)},
-        )
-        self.assertEqual(completed.returncode, 64, completed.stderr)
-        diagnostic = json.loads(completed.stderr)
-        self.assertEqual(diagnostic["kind"], "config_home_inside_checkout")
-        self.assertEqual(diagnostic["outcome"], "not_started")
+        inside.mkdir()
+        symlink = self.directory / "review-home-link"
+        symlink.symlink_to(inside, target_is_directory=True)
+        for label, home in (
+            ("inside", inside),
+            ("ancestor", self.directory),
+            ("symlink-inside", symlink),
+        ):
+            completed = self.run_dispatcher(
+                "review-paths", "--backend", "fakecli", "--cwd", str(self.workdir),
+                "--paths", "src tests",
+                env_extra={"INDEPENDENT_REVIEW_HOME": str(home)},
+            )
+            with self.subTest(label=label):
+                self.assertEqual(completed.returncode, 64, completed.stderr)
+                diagnostic = json.loads(completed.stderr)
+                self.assertEqual(diagnostic["kind"], "config_home_inside_checkout")
+                self.assertEqual(diagnostic["outcome"], "not_started")
+                self.assertEqual(diagnostic["backend_task_invocations"], 0)
 
     def test_timeout_guard_covers_profiles_without_timeout_flag(self):
         adapter = self.fake_adapter(

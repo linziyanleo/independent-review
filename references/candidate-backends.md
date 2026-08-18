@@ -3,13 +3,13 @@
 Researched on 2026-08-17. CLI surfaces change fast; recheck before shipping
 a profile.
 
-Research notes for reviewer CLIs that are not bundled profiles yet. Each
-entry records the headless invocation shape, identity flags, output
-extraction, read-only posture, authentication, and session isolation, plus a
-recommended profile `kind`. Fields marked **unverified** were sourced but not
-exercised; confirm them against the installed version before writing a
-profile. The bundled `pi`, `qoder`, and `codex` profiles are verified by real
-runs — this file is a starting point, not a contract.
+Research notes for reviewer CLIs that are candidates for bundling. Each entry
+records the headless invocation shape, identity flags, output extraction,
+read-only posture, authentication, and session isolation, plus a recommended
+profile `kind`. Fields marked **unverified** were sourced but not exercised;
+confirm them against the installed version before writing a profile. The
+bundled profiles are documented in their `references/backend-*.md` notes and
+are not repeated here. This file is a starting point, not a contract.
 
 Sources are listed per entry.
 
@@ -117,24 +117,6 @@ Sources are listed per entry.
 - Sources: <https://docs.z.ai/devpack/tool/zcode>,
   <https://raw.githubusercontent.com/dorukardahan/headless-relay/main/references/cli-reference.md>,
   <https://raw.githubusercontent.com/Q00/ouroboros/main/docs/runtime-guides/zcode.md>
-
-## deepseek-harness (`dsh`, developer preview)
-
-- Invocation: `dsh --profile headless "<task>"`; prompt only as positional
-  argument — no stdin, no prompt file.
-- Identity: **no CLI model/effort flags**; model and `reasoningEffort` live
-  in `$DSH_HOME/settings.yaml` (`agent-default-model:`).
-- Output: stdout carries only the final assistant text; no JSON mode. Exit
-  code 0/1 maps to turn completion.
-- Read-only: `DSH_PERMISSION_MODE=read-only` env (bwrap/Landlock/sandbox-exec
-  backend; fail-closed without one). Approval prompts auto-deny headless.
-- Auth: `DEEPSEEK_API_KEY` (plus optional `DEEPSEEK_BASE_URL`).
-- Session: fresh persisted session per run; no resume flag; point `DSH_HOME`
-  at a temp dir for full isolation.
-- Suggested kind: `adapter-prompt-file` (prompt via single argv argument —
-  watch the argument-size limit for large inputs).
-- Sources: <https://github.com/deepseek-ai/deepseek-harness>,
-  <https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md>
 
 ## omp (oh-my-pi)
 

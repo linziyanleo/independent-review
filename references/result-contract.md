@@ -25,7 +25,7 @@ backend result:
   },
   "review": {
     "verdict": "approve|request_changes|inconclusive",
-    "text": "the reviewer's full original Markdown review, verbatim"
+    "text": "the reviewer's complete natural Markdown review"
   },
   "trace": {}
 }
@@ -53,7 +53,7 @@ Other trace fields a result may carry:
 | --- | --- |
 | `backend_task_invocations` | Always `1` on success; present on every runner path. Use it, not the exit code, for round and billing accounting. |
 | `backend_trace` | The adapter envelope's own trace (envelope strategy only); may report effective identity. |
-| `binaries` | `{name: {path, sha256}}` for binaries the profile marks `trace_sha256`; adapter profiles with `adapter_flag` execute these exact paths. |
+| `binaries` | `{name: {path, sha256}}` for binaries the profile marks `trace_sha256`; `path` is the validated absolute selection (including an intentional symlink), and adapter profiles with `adapter_flag` execute that exact selection. |
 | `template` | Trusted review-template name, source (`bundled` or `user`), resolved path, and SHA-256. |
 | `stderr` | Bounded backend stderr (argv kind only). |
 
@@ -76,10 +76,12 @@ Use these outcomes:
 
 ## Review payload
 
-The review is the reviewer's own Markdown analysis, delivered verbatim in
-`review.text`. The reviewer is free-form except for one commitment: a short
-verdict statement at the beginning or the end using exactly one of the words
-`approve`, `request_changes`, or `inconclusive`.
+The reviewer's natural Markdown analysis is preserved in `review.text` without
+coercing it into a rigid findings schema or rewriting its prose. The stdout
+transport may normalize a terminal line ending; hosts judge the meaning and
+evidence, not byte-for-byte formatting. The reviewer is free-form except for
+one commitment: a short verdict statement at the beginning or the end using
+exactly one of the words `approve`, `request_changes`, or `inconclusive`.
 
 The dispatcher enforces exactly two payload rules:
 
@@ -94,8 +96,8 @@ The dispatcher enforces exactly two payload rules:
   never an approval, and the diagnostic preserves the paid review body
   (`result_bytes`, `result_sha256`, `result_excerpt`) for manual audit.
 
-Everything else is contract between the reviewer and the host, verified
-during local disposition rather than by the dispatcher:
+Everything else is judged semantically by the host during local disposition
+rather than encoded as a dispatcher schema:
 
 - `approve` claims no high or medium issue exists; `request_changes` claims at
   least one; `inconclusive` must name the concrete evidence gap.

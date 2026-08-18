@@ -10,7 +10,8 @@ of the authoring session's assumptions.
 ## Features
 
 - **Backend-neutral** — reviewer CLIs are interchangeable JSON profiles, not
-  hard-coded integrations. Bundled profiles: Pi, Qoder CLI, Codex CLI.
+  hard-coded integrations. Bundled profiles: Pi, Qoder CLI, Codex CLI, and
+  DeepSeek Harness CLI (`dsh`, experimental).
 - **Three evidence modes** — `review-diff` (pasted diff), `review-paths`
   (named paths with read-only tool access), `review-artifact` (frozen
   documents such as plans or runbooks).
@@ -23,16 +24,17 @@ of the authoring session's assumptions.
 - **Adversarial acceptance** — every material finding is verified locally
   before acceptance; disputes that cannot be settled against the local tree
   escalate to a rebuttal round.
-- **Hybrid review contract** — the reviewer's full Markdown analysis
-  delivered verbatim, plus one extracted decisive verdict. A conflicting or
-  missing verdict is an `unknown` delivery failure, never a silent approval,
-  and the diagnostic preserves the review body for audit.
+- **Hybrid review contract** — the reviewer's natural Markdown analysis is
+  preserved without forcing it into a findings schema, plus one extracted
+  decisive verdict. A conflicting or missing verdict is an `unknown` delivery
+  failure, never a silent approval, and the diagnostic preserves the review
+  body for semantic audit.
 
 ## Requirements
 
 - Python 3.10+
 - At least one supported reviewer CLI installed and authenticated on the
-  host (`qodercli`, `codex`, or `pi` + `node`). All glue adapters are
+  host (`qodercli`, `codex`, `dsh`, or `pi` + `node`). All glue adapters are
   bundled under `scripts/adapters/` — the skill has no external skill
   dependencies.
 
@@ -62,6 +64,12 @@ python3 "$DISPATCHER" review-diff \
   --backend <name> --cwd "$REPO" --diff-file /path/to/final.diff \
   --rebuttal-file /path/to/rebuttal.md
 ```
+
+The experimental `dsh` profile is explicit-only: it is listed by `backends`
+but never selected by implicit `auto`. Its isolated-home setup, identity
+configuration, and current limitations live in
+[references/backend-dsh.md](references/backend-dsh.md), not in the skill
+workflow.
 
 Remember preferences per project, per host agent, or globally:
 

@@ -71,7 +71,7 @@ The dispatcher invokes an adapter exactly one way:
 
 ```text
 {python} <adapter> prompt --cwd <dir> --prompt-file <private 0600 file>
-  [<profile binary adapter_flag> <resolved absolute path>]...
+  [<profile binary adapter_flag> <validated absolute selected path>]...
   [--tools <profile path_tools>] [--model M] [--effort E]
   [--provider P --model M] [--agent A] [--timeout-seconds N]
 ```

@@ -3,8 +3,8 @@
 
 Reviewer backends are JSON profiles, not code. See references/backend-profile.md
 for the profile schema and references/result-contract.md for the result
-envelope. Remembered review defaults (preferences) live only under
-INDEPENDENT_REVIEW_HOME, never inside the reviewed checkout.
+envelope. Remembered review defaults (preferences) live only under a trusted
+INDEPENDENT_REVIEW_HOME that does not overlap the reviewed checkout.
 """
 
 from __future__ import annotations
@@ -126,6 +126,11 @@ def config_home() -> Path:
     return Path.home() / ".config" / "independent-review"
 
 
+def roots_overlap(first: Path, second: Path) -> bool:
+    """Return whether two resolved trust roots contain one another."""
+    return first == second or first in second.parents or second in first.parents
+
+
 def expand_profile_path(value: str) -> Path:
     expanded = value.replace("{skill_dir}", str(skill_dir()))
     return Path(expanded).expanduser()
@@ -149,7 +154,13 @@ def validate_binary_spec(name: str, spec: Any) -> dict[str, Any]:
     if not NAME_PATTERN.fullmatch(name):
         raise ProfileError(f"discovery binary name must match {NAME_PATTERN.pattern}: {name}")
     require_type(spec, dict, f"discovery.binaries.{name}")
-    allowed = {"env", "basename", "adapter_flag", "prepend_to_path", "trace_sha256"}
+    allowed = {
+        "env",
+        "basename",
+        "adapter_flag",
+        "prepend_to_path",
+        "trace_sha256",
+    }
     unknown = sorted(set(spec) - allowed)
     if unknown:
         raise ProfileError(f"discovery.binaries.{name} has unknown fields {unknown}")
@@ -242,9 +253,13 @@ def validate_profile(raw: Any, origin: str) -> dict[str, Any]:
     kind = raw.get("kind")
     if kind not in PROFILE_KINDS:
         raise ProfileError(f"{origin}: kind must be one of {list(PROFILE_KINDS)}")
-    auto_priority = raw.get("auto_priority")
-    if not isinstance(auto_priority, int) or isinstance(auto_priority, bool):
-        raise ProfileError(f"{origin}: auto_priority must be an integer")
+    if "auto_priority" not in raw:
+        raise ProfileError(f"{origin}: auto_priority is required")
+    auto_priority = raw["auto_priority"]
+    if auto_priority is not None and (
+        not isinstance(auto_priority, int) or isinstance(auto_priority, bool)
+    ):
+        raise ProfileError(f"{origin}: auto_priority must be an integer or null")
 
     discovery = require_type(raw.get("discovery"), dict, "discovery")
     unknown_discovery = sorted(set(discovery) - {"binaries", "adapter"})
@@ -288,7 +303,10 @@ def validate_profile(raw: Any, origin: str) -> dict[str, Any]:
         "display_name": display_name,
         "kind": kind,
         "auto_priority": auto_priority,
-        "discovery": {"binaries": binaries, "adapter": adapter_discovery},
+        "discovery": {
+            "binaries": binaries,
+            "adapter": adapter_discovery,
+        },
         "identity": identity,
         "timeouts": validate_timeouts(raw.get("timeouts")),
         "notes": optional_string(raw.get("notes"), "notes"),
@@ -446,20 +464,21 @@ def resolve_profile_runtime(
 ) -> tuple[dict[str, Any], list[str]]:
     """Resolve every binary and the adapter. Returns runtime plus missing items."""
     binaries: dict[str, str] = {}
-    missing: list[str] = []
+    missing_required: list[str] = []
     for name, spec in profile["discovery"]["binaries"].items():
         resolved = resolve_binary(name, spec, bin_overrides)
         if resolved is None:
-            missing.append(f"binary:{name}")
+            missing_required.append(f"binary:{name}")
         else:
             binaries[name] = resolved
+
     adapter = None
     adapter_discovery = profile["discovery"].get("adapter")
     if adapter_discovery is not None:
         adapter = resolve_adapter(adapter_discovery, adapter_override)
         if adapter is None:
-            missing.append("adapter")
-    return {"binaries": binaries, "adapter": adapter}, missing
+            missing_required.append("adapter")
+    return {"binaries": binaries, "adapter": adapter}, missing_required
 
 
 # ---------------------------------------------------------------------------
@@ -1209,7 +1228,11 @@ def auto_order(entries: dict[str, dict[str, Any]]) -> list[str]:
             )
         return order
     bundled = [
-        entry for entry in entries.values() if entry["source"] == "bundled" and entry["profile"]
+        entry
+        for entry in entries.values()
+        if entry["source"] == "bundled"
+        and entry["profile"]
+        and entry["profile"]["auto_priority"] is not None
     ]
     bundled.sort(key=lambda entry: (entry["profile"]["auto_priority"], entry["name"]))
     return [entry["name"] for entry in bundled]
@@ -1457,9 +1480,6 @@ def run_adapter_profile(
     else:
         review = parse_review_result(stdout, args.max_result_bytes)
         trace = {"backend_task_invocations": 1}
-    recorded = trace_binaries(profile, runtime)
-    if recorded:
-        trace["binaries"] = recorded
     return review, trace
 
 
@@ -1550,10 +1570,13 @@ def handle_backends() -> int:
     entries = discover_profiles()
     auto_names = set(auto_order(entries))
 
-    def sort_key(entry: dict[str, Any]) -> tuple[int, str]:
+    def sort_key(entry: dict[str, Any]) -> tuple[int, int, str]:
         if entry["profile"]:
-            return (entry["profile"]["auto_priority"], entry["name"])
-        return (10**9, entry["name"])
+            priority = entry["profile"]["auto_priority"]
+            if priority is not None:
+                return (0, priority, entry["name"])
+            return (1, 0, entry["name"])
+        return (2, 0, entry["name"])
 
     items: list[dict[str, Any]] = []
     for entry in sorted(entries.values(), key=sort_key):
@@ -1745,14 +1768,14 @@ def run_review(args: argparse.Namespace) -> int:
         )
     cwd = cwd.resolve()
 
-    # Executable profile definitions must never come from the reviewed
-    # checkout, including via a checkout-influenced INDEPENDENT_REVIEW_HOME.
+    # Keep executable profile definitions and all reviewed content under
+    # disjoint trust roots, including after symlink resolution.
     home = config_home()
     try:
         home_resolved = home.resolve()
     except OSError:
         home_resolved = home.absolute()
-    if home_resolved == cwd or cwd in home_resolved.parents:
+    if roots_overlap(home_resolved, cwd):
         fail(
             "config_home_inside_checkout",
             EXIT_USAGE,
@@ -1810,6 +1833,10 @@ def run_review(args: argparse.Namespace) -> int:
             error=bounded_text(str(exc)),
             **details,
         )
+
+    recorded = trace_binaries(profile, runtime)
+    if recorded:
+        trace["binaries"] = recorded
 
     result = {
         "type": "independent_review_result",

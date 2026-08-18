@@ -9,7 +9,8 @@
 ## 特性
 
 - **后端中立** — 评审 CLI 以 JSON profile 描述，可自由替换，而非硬编码
-  集成。内置 profile：Pi、Qoder CLI、Codex CLI。
+  集成。内置 profile：Pi、Qoder CLI、Codex CLI、DeepSeek Harness CLI
+  （`dsh`，实验性）。
 - **三种证据模式** — `review-diff`（粘贴 diff）、`review-paths`（指定路径
   + 只读工具访问）、`review-artifact`（冻结文档，如方案、规格、runbook）。
 - **记忆默认配置** — 后端、模型、effort、轮次等偏好按项目、宿主 agent、
@@ -18,16 +19,16 @@
   串联多轮。
 - **对抗式验收** — 每条重要 finding 在本地核实后才被接受；本地无法定论
   的争议可发起一轮 rebuttal 复审。
-- **混合评审契约** — 评审者的完整 Markdown 分析原文交付，外加一个提取
-  出的决定性裁决。裁决冲突或缺失属于 `unknown` 投递失败，绝不静默放行，
-  且诊断会保留评审正文供人工审计。
+- **混合评审契约** — 保留评审者自然的 Markdown 分析，不强制套入 findings
+  schema；只额外提取一个决定性裁决。裁决冲突或缺失属于 `unknown` 投递
+  失败，绝不静默放行，且诊断会保留评审正文供语义审计。
 
 ## 依赖
 
 - Python 3.10+
-- 主机上至少安装并登录一个受支持的评审 CLI（`qodercli`、`codex`，或
-  `pi` + `node`）。全部适配层已内置在 `scripts/adapters/`——本 skill
-  没有任何外部 skill 依赖。
+- 主机上至少安装并登录一个受支持的评审 CLI（`qodercli`、`codex`、
+  `dsh`，或 `pi` + `node`）。全部适配层已内置在 `scripts/adapters/`——
+  本 skill 没有任何外部 skill 依赖。
 
 ## 使用
 
@@ -55,6 +56,11 @@ python3 "$DISPATCHER" review-diff \
   --backend <name> --cwd "$REPO" --diff-file /path/to/final.diff \
   --rebuttal-file /path/to/rebuttal.md
 ```
+
+实验性的 `dsh` profile 仅支持显式选择：`backends` 会列出它，但隐式
+`auto` 永远不会选中。隔离 home、身份配置与当前限制统一放在
+[references/backend-dsh.md](references/backend-dsh.md)，不进入 skill
+工作流正文。
 
 按项目、宿主 agent 或全局记忆偏好：
 

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "name": "dsh",
+  "display_name": "DeepSeek Harness CLI (dsh)",
+  "kind": "adapter-prompt-file",
+  "auto_priority": null,
+  "discovery": {
+    "binaries": {
+      "dsh": {
+        "env": "INDEPENDENT_REVIEW_DSH_BIN",
+        "basename": "dsh",
+        "adapter_flag": "--dsh-bin",
+        "trace_sha256": true
+      }
+    },
+    "adapter": {
+      "env": "DSH_TASK",
+      "candidates": [
+        "{skill_dir}/scripts/adapters/dsh-task.py"
+      ]
+    }
+  },
+  "adapter": {
+    "path_tools": {"flag": "--evidence-mode", "value": "paths"},
+    "timeout_flag": null,
+    "result": {"strategy": "stdout-text"}
+  },
+  "identity": {
+    "provider": null,
+    "model": null,
+    "effort": null,
+    "agent": null
+  },
+  "timeouts": {"review-paths": 2400, "default": 1200},
+  "notes": "references/backend-dsh.md"
+}

@@ -14,7 +14,7 @@ the same review prompt and contract. It enables no tools for diff or
 artifact review and only `read,grep,find,ls` for path review. The host must
 provide the `pi` and `node` binaries and a valid Pi credential setup.
 
-The dispatcher passes both resolved absolute paths to the controller as
+The dispatcher passes both validated absolute selections to the controller as
 `--pi-bin` and `--node-bin`. The controller revalidates them before allocating
 the task receipt, uses the selected `pi` to locate the SDK package, and launches
 the bridge with the selected `node`. Dispatcher `--bin` overrides therefore

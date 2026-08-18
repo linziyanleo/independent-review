@@ -1,0 +1,135 @@
+# independent-review overlay for `dsh --profile headless`.
+#
+# The adapter starts dsh in an empty scratch workspace and a dedicated Harness
+# home. This last-applied overlay removes the remaining model-facing context and
+# capabilities that are unrelated to a single independent review.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are an independent read-only reviewer. Judge only the evidence and
+      review contract supplied in the user task. Do not modify files, delegate,
+      use external services, or widen the requested scope.
+
+# Do not spend another model request generating a persisted session title.
+- id: session-title-llm
+  disabled: true
+
+- id: llm-retry
+  disabled: true
+
+# Repository instructions and all skill catalogs are authoring-session context,
+# not review evidence. Disable their producers, not only their prompt budgets.
+- id: agent-instructions
+  disabled: true
+
+- id: skill
+  disabled: true
+
+- id: skill-filesystem
+  disabled: true
+
+- id: tool-skill
+  disabled: true
+
+- id: commands
+  disabled: true
+
+- id: command-feedback
+  disabled: true
+
+- id: command-compact
+  disabled: true
+
+- id: command-goal
+  disabled: true
+
+- id: user-questions
+  disabled: true
+
+# Keep native tool presentation fixed even if the parent shell configured dsh
+# Code Mode. The adapter also removes ambient DSH_* controls before spawning.
+- id: tools
+  config:
+    mode: native
+
+- id: code-runtime
+  disabled: true
+
+# Shell, mutation helpers, goals, workflows, and delegation are outside a
+# read-only review. `tool-fs` and `tool-fs-search` intentionally remain: path
+# reviews need read/glob/grep, while DSH_PERMISSION_MODE=read-only rejects the
+# write/edit operations that share dsh's filesystem tool package.
+- id: tool-bash
+  disabled: true
+
+- id: tool-pwsh
+  disabled: true
+
+- id: tool-jobs
+  disabled: true
+
+- id: tool-str-replace-editor
+  disabled: true
+
+- id: tool-todo
+  disabled: true
+
+- id: tool-goal
+  disabled: true
+
+- id: goal
+  disabled: true
+
+- id: goal-round-driver
+  disabled: true
+
+- id: tool-ralph
+  disabled: true
+
+- id: plan-mode
+  disabled: true
+
+- id: subagent
+  disabled: true
+
+- id: subagent-spawn-in-process
+  disabled: true
+
+- id: subagent-fork-in-process
+  disabled: true
+
+- id: tool-subagent-control
+  disabled: true
+
+- id: tool-subagent-list-agents
+  disabled: true
+
+- id: tool-subagent
+  disabled: true
+
+- id: tool-subagent-fork
+  disabled: true
+
+- id: tool-subagent-report
+  disabled: true
+
+- id: workflow-worker-thread
+  disabled: true
+
+- id: tool-workflow
+  disabled: true
+
+- id: repeat-tool-reminder
+  disabled: true
+
+# Independent review is not a research task. Disable both the model-facing web
+# tool and its backing services so no auxiliary external request can start.
+- id: tool-web
+  disabled: true
+
+- id: web
+  disabled: true
+
+- id: web-search-deepseek
+  disabled: true

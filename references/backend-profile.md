@@ -26,7 +26,7 @@ extension that requires dispatcher code.
 | `name` | string | `^[a-z0-9][a-z0-9-]*$`; the value passed to `--backend`. Required. |
 | `display_name` | string | Human label used in listings. Required. |
 | `kind` | string | Invocation shape: `adapter-prompt-file` or `argv-stdin-jsonl`. Required. |
-| `auto_priority` | integer (not boolean) | Bundled profiles join `--backend auto` in ascending order. User profiles never join implicit auto; name them in `INDEPENDENT_REVIEW_BACKENDS` to opt in. Required. |
+| `auto_priority` | integer (not boolean) or `null` | Bundled profiles with an integer join `--backend auto` in ascending order. `null` makes a bundled backend explicit-only. User profiles never join implicit auto; name them in `INDEPENDENT_REVIEW_BACKENDS` to opt in. Required. |
 | `discovery` | object | How the dispatcher finds binaries and the adapter. Required. |
 | `identity` | object | Which of `provider`, `model`, `effort`, `agent` the backend accepts, and how to spell them. Required (any entry may be `null`). |
 | `timeouts` | object | `{"review-paths": seconds-or-null, "default": seconds-or-null}`. `null` means no dispatcher timeout. Required. |
@@ -56,19 +56,22 @@ extension that requires dispatcher code.
 
 - Every key in `binaries` must resolve for the backend to count as available.
   Resolution order: dispatcher `--bin <name>=<path>`, then the named
-  environment variable, then `PATH` lookup.
+  environment variable, then `PATH` lookup. Runner alternatives belong behind
+  one adapter-selected executable contract, not in the generic profile schema.
 - `basename`: an explicit `--bin`/env path must carry this exact file name.
   Prevents pointing a profile's trust assumptions at an arbitrary binary.
-- `adapter_flag`: for `adapter-prompt-file`, pass the resolved absolute path as
-  `<adapter_flag> <path>` so discovery, execution, and trace refer to the same
-  executable. Adapter flags must be unique inside one profile and are invalid
-  for argv profiles, which use `{bin:<name>}` placeholders instead.
+- `adapter_flag`: for `adapter-prompt-file`, pass the validated absolute selected
+  path as `<adapter_flag> <path>` so discovery, execution, and trace refer to
+  the same executable. Adapter flags must be unique inside one profile and are
+  invalid for argv profiles, which use `{bin:<name>}` placeholders instead.
 - `prepend_to_path`: the resolved binary's directory is prepended to the
   child process `PATH`. This is optional supporting environment setup, not an
   exact binary-selection mechanism; use `adapter_flag` when the adapter starts
   the declared executable.
-- `trace_sha256`: the resolved binary's absolute path and SHA-256 are recorded
-  in the normalized trace.
+- `trace_sha256`: the validated absolute selection and the SHA-256 of the file
+  it currently resolves to are recorded in the normalized trace. The selected
+  path may intentionally remain a symlink so discovery, execution, and trace
+  name the same launcher path.
 - `adapter` is required for `adapter-prompt-file` profiles. `env` overrides the
   path; otherwise the first existing `candidates` entry wins. `{skill_dir}`
   expands to the resolved skill root. Dispatcher `--adapter` beats both.
@@ -101,7 +104,7 @@ The dispatcher runs:
 
 ```text
 {python} <adapter> prompt --cwd {cwd} --prompt-file <private 0600 file>
-  [<binary adapter_flag> <resolved absolute path>]...
+  [<binary adapter_flag> <validated absolute selected path>]...
 ```
 
 `adapter` section fields:

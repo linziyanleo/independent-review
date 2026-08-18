@@ -26,8 +26,9 @@ python3 "$INDEPENDENT_REVIEW" review-paths \
 ```
 
 The profile requires the file name `qodercli` for any explicit or
-environment-selected binary, passes its resolved absolute path to the adapter
-as `--qodercli-bin`, then records that path and SHA-256 in the normalized trace.
+environment-selected binary, passes its validated absolute selection to the
+adapter as `--qodercli-bin`, then records that path and SHA-256 in the
+normalized trace.
 Set `INDEPENDENT_REVIEW_QODERCLI_BIN` for a durable non-secret default. Never
 infer authentication state from another Qoder installation.
 
