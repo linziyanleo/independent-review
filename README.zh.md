@@ -58,8 +58,9 @@ python3 "$DISPATCHER" review-diff \
 ```
 
 实验性的 `dsh` profile 仅支持显式选择：`backends` 会列出它，但隐式
-`auto` 永远不会选中。隔离 home、身份配置与当前限制统一放在
-[references/backend-dsh.md](references/backend-dsh.md)，不进入 skill
+`auto` 永远不会选中。当前运行契约与限制放在 backend
+[runtime 指南](references/backends/dsh/runtime.md)；隔离 home 与身份配置
+放在其链接的 [setup 指南](references/backends/dsh/setup.md)，不进入 skill
 工作流正文。
 
 按项目、宿主 agent 或全局记忆偏好：
@@ -108,6 +109,9 @@ medium finding，先对照当前本地代码核实，再记录处置
 [references/backend-profile.md](references/backend-profile.md)，多个常见
 CLI 的调研笔记见
 [references/candidate-backends.md](references/candidate-backends.md)。
+将 backend 内置进 skill 时，还需遵循
+[backend 集成清单](references/backend-integration.md#adding-a-backend-checklist)
+中的 runtime/setup notes 约定。
 
 ## 新增评审类型
 
@@ -139,7 +143,7 @@ CLI 的调研笔记见
 SKILL.md            Skill 入口与操作契约
 scripts/            调度器（independent-review.py）与内置 adapter（adapters/）
 backends/           评审 CLI profile（JSON）
-references/         契约、backend 说明与内置评审模板
+references/         共享契约、各 backend runtime/setup 指南与评审模板
 agents/             Agent 定义
 tests/              调度器测试（unittest）
 ```

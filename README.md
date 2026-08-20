@@ -66,10 +66,11 @@ python3 "$DISPATCHER" review-diff \
 ```
 
 The experimental `dsh` profile is explicit-only: it is listed by `backends`
-but never selected by implicit `auto`. Its isolated-home setup, identity
-configuration, and current limitations live in
-[references/backend-dsh.md](references/backend-dsh.md), not in the skill
-workflow.
+but never selected by implicit `auto`. Its current operating contract and
+limitations live in the backend
+[runtime guide](references/backends/dsh/runtime.md); isolated-home and identity
+configuration live in the linked
+[setup guide](references/backends/dsh/setup.md), not in the skill workflow.
 
 Remember preferences per project, per host agent, or globally:
 
@@ -119,6 +120,9 @@ adapter (`adapter-prompt-file`). See
 [references/backend-profile.md](references/backend-profile.md) for the full
 schema and [references/candidate-backends.md](references/candidate-backends.md)
 for researched invocation notes on several popular CLIs.
+When bundling a backend with the skill, also follow the runtime/setup notes
+convention in the
+[backend integration checklist](references/backend-integration.md#adding-a-backend-checklist).
 
 ## Add a review type
 
@@ -157,7 +161,7 @@ requiring the caller to know that template name.
 SKILL.md            Skill entry point and operating contract
 scripts/            Dispatcher (independent-review.py) and bundled adapters (adapters/)
 backends/           Reviewer CLI profiles (JSON)
-references/         Contracts, backend notes, and bundled review templates
+references/         Shared contracts, per-backend runtime/setup guides, and review templates
 agents/             Agent definitions
 tests/              Dispatcher tests (unittest)
 ```

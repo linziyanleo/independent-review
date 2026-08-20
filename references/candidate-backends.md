@@ -8,8 +8,9 @@ records the headless invocation shape, identity flags, output extraction,
 read-only posture, authentication, and session isolation, plus a recommended
 profile `kind`. Fields marked **unverified** were sourced but not exercised;
 confirm them against the installed version before writing a profile. The
-bundled profiles are documented in their `references/backend-*.md` notes and
-are not repeated here. This file is a starting point, not a contract.
+bundled profiles are documented in their
+`references/backends/<name>/runtime.md` guides, with setup guidance beside
+them, and are not repeated here. This file is a starting point, not a contract.
 
 Sources are listed per entry.
 

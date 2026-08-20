@@ -32,5 +32,5 @@
     "agent": null
   },
   "timeouts": {"review-paths": 2400, "default": 1200},
-  "notes": "references/backend-dsh.md"
+  "notes": "references/backends/dsh/runtime.md"
 }

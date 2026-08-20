@@ -26,5 +26,5 @@
   },
   "result": {"strategy": "jsonl-terminal-message"},
   "timeouts": {"review-paths": 2400, "default": 1200},
-  "notes": "references/backend-codex.md"
+  "notes": "references/backends/codex/runtime.md"
 }

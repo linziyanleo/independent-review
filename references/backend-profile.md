@@ -30,7 +30,7 @@ extension that requires dispatcher code.
 | `discovery` | object | How the dispatcher finds binaries and the adapter. Required. |
 | `identity` | object | Which of `provider`, `model`, `effort`, `agent` the backend accepts, and how to spell them. Required (any entry may be `null`). |
 | `timeouts` | object | `{"review-paths": seconds-or-null, "default": seconds-or-null}`. `null` means no dispatcher timeout. Required. |
-| `notes` | string | Skill-relative path to the backend's quirks document. Optional. |
+| `notes` | string | Skill-relative path to the backend's runtime guide; backend-specific setup guidance lives in a sibling `setup.md`. Optional; when absent, the listing exposes no backend guide to read. |
 | `command` | array | argv template. Required for `argv-stdin-jsonl` only. |
 | `adapter` | object | Adapter behavior knobs. Required for `adapter-prompt-file` only. |
 | `result` | object | Extraction strategy. Required for `argv-stdin-jsonl`; for adapters it lives under `adapter.result`. |

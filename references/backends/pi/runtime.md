@@ -1,4 +1,7 @@
-# Pi Backend Notes
+# Pi Runtime Guide
+
+Read [setup.md](setup.md) only for first use, authentication or binary changes,
+upgrades, or readiness repair.
 
 Pi runs through the SDK controller bundled with this skill:
 
@@ -11,15 +14,14 @@ The bundled `backends/pi.json` profile discovers the controller from that
 location (override with dispatcher `--adapter` or the `PI_AGENT_TASK`
 environment variable) and uses its `prompt` mode so every backend receives
 the same review prompt and contract. It enables no tools for diff or
-artifact review and only `read,grep,find,ls` for path review. The host must
-provide the `pi` and `node` binaries and a valid Pi credential setup.
+artifact review and only `read,grep,find,ls` for path review.
 
-The dispatcher passes both validated absolute selections to the controller as
-`--pi-bin` and `--node-bin`. The controller revalidates them before allocating
-the task receipt, uses the selected `pi` to locate the SDK package, and launches
-the bridge with the selected `node`. Dispatcher `--bin` overrides therefore
-control execution rather than availability checks alone; both executable paths
-and SHA-256 values appear in the normalized trace.
+The dispatcher passes both validated absolute binary selections to the
+controller as `--pi-bin` and `--node-bin`. The controller revalidates them
+before allocating the task receipt, uses the selected `pi` to locate the SDK
+package, and launches the bridge with the selected `node`. Dispatcher `--bin`
+overrides therefore control execution rather than availability checks alone;
+both executable paths and SHA-256 values appear in the normalized trace.
 
 ## Identity and effort
 

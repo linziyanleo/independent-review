@@ -111,5 +111,7 @@ An adapter must:
    and the profile's `env` override remain available for development.
 4. Confirm `python3 scripts/independent-review.py backends` reports the
    backend available, then run one `review-diff` against a small real diff.
-5. Record quirks (auth behavior, output shapes, prompt limits) in a
-   `references/backend-<name>.md` notes file and set the profile's `notes`.
+5. Record ordinary execution quirks in
+   `references/backends/<name>/runtime.md`, put first-use, authentication,
+   upgrade, and readiness-repair guidance in its sibling `setup.md`, and set
+   the profile's `notes` to the runtime guide.

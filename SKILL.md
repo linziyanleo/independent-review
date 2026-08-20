@@ -50,8 +50,10 @@ Combine `auto` only with portable options such as `--effort`; select a
 concrete backend before passing model, provider, or agent identity.
 
 Before invoking a backend for the first time, read its profile `notes` file
-(from the `backends` listing) for runtime quirks. To understand or extend the
-profile format itself, read
+(from the `backends` listing). That entrypoint is the backend's runtime guide;
+follow its sibling setup guide only for first use, authentication or
+configuration changes, upgrades, or readiness repair. To understand or extend
+the profile format itself, read
 [backend-profile.md](references/backend-profile.md); the decision rule for
 whether a CLI needs an adapter, and the adapter contract, live in
 [backend-integration.md](references/backend-integration.md). New reviewer
@@ -60,11 +62,11 @@ reviewed repository;
 [candidate-backends.md](references/candidate-backends.md) collects researched
 invocation notes for CLIs not bundled yet.
 
-For `dsh`, the notes are also the readiness contract. A backend reported as
-available proves only that the executable and bundled adapter were discovered;
-it does not prove that the dedicated `headless` profile, provider, model, or
-credential reference is configured. Read
-[backend-dsh.md](references/backend-dsh.md) before the first invocation.
+For `dsh`, availability proves only that the executable and bundled adapter
+were discovered; it does not prove that the dedicated `headless` profile,
+provider, model, or credential reference is configured. Read its
+[runtime guide](references/backends/dsh/runtime.md), then follow the linked
+[setup guide](references/backends/dsh/setup.md) before the first invocation.
 Provisioning that dedicated home is a host-local configuration change, and a
 live smoke is a potentially billable model request; obtain the corresponding
 authorization before either action.

@@ -35,5 +35,5 @@
     "effort": {"flag": "--effort"}
   },
   "timeouts": {"review-paths": null, "default": null},
-  "notes": "references/backend-pi.md"
+  "notes": "references/backends/pi/runtime.md"
 }

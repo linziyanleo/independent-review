@@ -31,5 +31,5 @@
     "agent": {"flag": "--agent"}
   },
   "timeouts": {"review-paths": 2400, "default": 1200},
-  "notes": "references/backend-qoder.md"
+  "notes": "references/backends/qoder/runtime.md"
 }

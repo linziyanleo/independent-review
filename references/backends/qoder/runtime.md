@@ -1,4 +1,7 @@
-# Qoder CLI Backend Notes
+# Qoder CLI Runtime Guide
+
+Read [setup.md](setup.md) only for first use, login or binary changes,
+upgrades, or readiness repair.
 
 Qoder runs through the headless adapter bundled with this skill:
 
@@ -12,8 +15,7 @@ environment variable) and uses its `prompt` mode with one private prompt
 file. It enables no tools for diff or artifact review and only
 `Read,Grep,Glob` for path review. The adapter runs one stateless
 `qodercli -p` task with `--permission-mode dont_ask`, zero model-request
-retries, JSON validation, and no response file. The host must provide the
-`qodercli` binary and a valid Qoder login.
+retries, JSON validation, and no response file.
 
 When multiple Qoder installations exist, select one before the model request:
 
@@ -28,9 +30,9 @@ python3 "$INDEPENDENT_REVIEW" review-paths \
 The profile requires the file name `qodercli` for any explicit or
 environment-selected binary, passes its validated absolute selection to the
 adapter as `--qodercli-bin`, then records that path and SHA-256 in the
-normalized trace.
-Set `INDEPENDENT_REVIEW_QODERCLI_BIN` for a durable non-secret default. Never
-infer authentication state from another Qoder installation.
+normalized trace. Set `INDEPENDENT_REVIEW_QODERCLI_BIN` for a durable
+non-secret default. Never infer authentication state from another Qoder
+installation.
 
 ## Runtime environment
 
@@ -44,10 +46,9 @@ values are never emitted.
 
 Use adapter option `--shell-env inherit`, or set
 `INDEPENDENT_REVIEW_QODER_SHELL_ENV=inherit`, for CI and other processes whose
-environment is already authoritative. Loading
-the shell environment is a pre-model step: a missing, failed, oversized, or
-malformed environment is `outcome=not_started` with zero backend task
-invocations.
+environment is already authoritative. Loading the shell environment is a
+pre-model step: a missing, failed, oversized, or malformed environment is
+`outcome=not_started` with zero backend task invocations.
 
 ## Identity and effort
 
@@ -57,10 +58,10 @@ agent with `--agent`; the profile declares these spellings. Qoder's adapter
 defaults its agent when none is requested.
 
 The current adapter does not expose a validated effective model, effort, or
-session identity. Keep normalized effective identity absent rather than copying
-requested values into trace.
+session identity. Keep normalized effective identity absent rather than
+copying requested values into trace.
 
-## Authentication
+## Authentication failure handling
 
 Run the requested review without a login preflight. After, and only after, a
 strong authentication-class failure, the adapter probes
@@ -71,10 +72,10 @@ state:
 - `logged_out`: ask the user to run `qodercli login` manually.
 - `unknown`: preserve uncertainty.
 
-Do not retry automatically in any of these cases.
+Do not retry automatically in any of these cases. If login or installation
+repair is required, follow [setup.md](setup.md).
 
 Qoder's positional prompt transport can reach host argument-size limits for a
 very large frozen artifact; the adapter rejects prompts above half the host
-argument-size limit before Qoder starts. Prefer a
-smaller final net diff, `review-paths`, or another backend instead of
-truncating evidence.
+argument-size limit before Qoder starts. Prefer a smaller final net diff,
+`review-paths`, or another backend instead of truncating evidence.

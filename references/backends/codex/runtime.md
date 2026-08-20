@@ -1,4 +1,7 @@
-# Codex CLI Backend Notes
+# Codex CLI Runtime Guide
+
+Read [setup.md](setup.md) only for first use, authentication or binary changes,
+upgrades, or readiness repair.
 
 Codex runs through `codex exec`. The exact argv template lives in the bundled
 `backends/codex.json` profile and invokes one ephemeral session with
@@ -6,9 +9,9 @@ Codex runs through `codex exec`. The exact argv template lives in the bundled
 The read-only sandbox is the write enforcement; no approval flags are passed
 (current Codex CLI versions removed `--ask-for-approval` from `exec` — the
 sandbox mode alone carries the posture). The dispatcher sends the prompt on
-stdin, parses JSONL in memory, requires a completed turn and a non-empty
-final agent message, then takes that message as the review text and extracts
-its decisive verdict.
+stdin, parses JSONL in memory, requires a completed turn and a non-empty final
+agent message, then takes that message as the review text and extracts its
+decisive verdict.
 
 Override the binary with dispatcher `--bin codex=/path/to/codex` or the
 `INDEPENDENT_REVIEW_CODEX_BIN` environment variable.
