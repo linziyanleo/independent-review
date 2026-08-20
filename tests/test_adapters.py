@@ -385,6 +385,57 @@ class DshAdapterTests(unittest.TestCase):
         self.assertEqual(observed["env"]["DSH_HOME"], str(review_home.resolve()))
         self.assertEqual(observed["env"]["DSH_PERMISSION_MODE"], "read-only")
 
+    def test_auth_failure_action_is_provider_neutral(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "checkout"
+            root.mkdir()
+            selected = base / "selected" / "dsh"
+            selected.parent.mkdir()
+            selected.write_text("#!/bin/sh\n", encoding="utf-8")
+            selected.chmod(0o755)
+            prompt = root / "prompt.md"
+            prompt.write_text("Review this change.\n", encoding="utf-8")
+            review_home = base / "review-home"
+            stderr = io.StringIO()
+            argv = [
+                str(DSH_PATH),
+                "prompt",
+                "--cwd",
+                str(root),
+                "--prompt-file",
+                str(prompt),
+                "--dsh-bin",
+                str(selected),
+            ]
+            completed = subprocess.CompletedProcess(
+                [str(selected)],
+                1,
+                stdout=b"",
+                stderr=b"401 unauthorized: API key missing\n",
+            )
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(DSH, "run_process", return_value=completed),
+                mock.patch.object(sys, "stderr", stderr),
+                mock.patch.dict(
+                    os.environ,
+                    {"INDEPENDENT_REVIEW_DSH_HOME": str(review_home)},
+                ),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                DSH.main()
+
+        self.assertEqual(raised.exception.code, 1)
+        diagnostic = json.loads(stderr.getvalue())
+        self.assertEqual(diagnostic["kind"], "dsh_auth_failed")
+        self.assertEqual(diagnostic["outcome"], "failed")
+        self.assertEqual(diagnostic["backend_task_invocations"], 1)
+        action = diagnostic["details"]["user_action"]
+        self.assertIn("selected provider", action)
+        self.assertIn("dedicated dsh home", action)
+        self.assertNotIn("DEEPSEEK_API_KEY", action)
+
     def test_review_home_inside_checkout_is_rejected_before_spawn(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

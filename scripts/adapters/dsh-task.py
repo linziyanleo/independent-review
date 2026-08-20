@@ -378,8 +378,9 @@ def main() -> int:
             details["outcome"] = "failed"
             details["auth_state"] = "unknown"
             details["user_action"] = (
-                "Configure DEEPSEEK_API_KEY in the host environment or the dsh "
-                "credential store, then confirm before retrying."
+                "Configure the credential referenced by the selected provider "
+                "in the dedicated dsh home credential store or host environment, "
+                "then confirm before retrying."
             )
             fail("dsh_auth_failed", EXIT_SEMANTIC_FAILURE, **details)
         # dsh has no structured terminal failure event; a boot-time error and a

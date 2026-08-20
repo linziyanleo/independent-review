@@ -60,6 +60,15 @@ reviewed repository;
 [candidate-backends.md](references/candidate-backends.md) collects researched
 invocation notes for CLIs not bundled yet.
 
+For `dsh`, the notes are also the readiness contract. A backend reported as
+available proves only that the executable and bundled adapter were discovered;
+it does not prove that the dedicated `headless` profile, provider, model, or
+credential reference is configured. Read
+[backend-dsh.md](references/backend-dsh.md) before the first invocation.
+Provisioning that dedicated home is a host-local configuration change, and a
+live smoke is a potentially billable model request; obtain the corresponding
+authorization before either action.
+
 Review-type instructions are independently extensible templates. Use the
 bundled `default` template or select `--template <name>`. Trusted bundled rules
 live in `references/review-templates/<name>.md`; host-local rules live in
