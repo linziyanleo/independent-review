@@ -475,6 +475,29 @@ class ProfileTests(unittest.TestCase):
             with self.subTest(path=path, typo=typo), self.assertRaises(MODULE.ProfileError):
                 MODULE.validate_profile(raw, "test")
 
+    def test_provider_plugins_default_empty_and_expand_tokens(self):
+        bundled = json.loads((SKILL_ROOT / "backends" / "pi.json").read_text(encoding="utf-8"))
+        profile = MODULE.validate_profile(bundled, "test")
+        self.assertEqual(profile["adapter"]["provider_plugins"], [])
+
+        raw = json.loads((SKILL_ROOT / "backends" / "pi.json").read_text(encoding="utf-8"))
+        raw["adapter"]["provider_plugins"] = [
+            "{skill_dir}/scripts/adapters/example-provider.mjs",
+            "~/provider/other.js",
+        ]
+        expanded = MODULE.validate_profile(raw, "test")["adapter"]["provider_plugins"]
+        self.assertEqual(
+            expanded[0], str(MODULE.skill_dir() / "scripts/adapters/example-provider.mjs")
+        )
+        self.assertEqual(expanded[1], str(Path.home() / "provider/other.js"))
+
+    def test_provider_plugins_reject_non_string_entries(self):
+        for bad in ([123], [""], ["   "], "not-a-list"):
+            raw = json.loads((SKILL_ROOT / "backends" / "pi.json").read_text(encoding="utf-8"))
+            raw["adapter"]["provider_plugins"] = bad
+            with self.subTest(bad=bad), self.assertRaises(MODULE.ProfileError):
+                MODULE.validate_profile(raw, "test")
+
     def test_binary_adapter_flags_are_adapter_only_and_unique(self):
         argv_profile = json.loads(
             (SKILL_ROOT / "backends" / "codex.json").read_text(encoding="utf-8")
@@ -792,6 +815,38 @@ class DispatcherIntegrationTests(unittest.TestCase):
             result["trace"]["binaries"]["fake-reviewer"]["sha256"],
             hashlib.sha256(binary_target.read_bytes()).hexdigest(),
         )
+
+    def test_provider_plugins_are_forwarded_to_adapter(self):
+        plugin_path = self.directory / "qoder-provider.mjs"
+        plugin_path.write_text("export default async () => {};\n", encoding="utf-8")
+        text = review_text()
+        adapter = self.fake_adapter(
+            "plugin-aware",
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            f"expected = {str(plugin_path)!r}\n"
+            "if '--provider-plugin' not in sys.argv:\n"
+            "    raise SystemExit(3)\n"
+            "index = sys.argv.index('--provider-plugin')\n"
+            "if sys.argv[index + 1] != expected:\n"
+            "    raise SystemExit(4)\n"
+            f"print({text!r})\n",
+        )
+        profile = adapter_profile("plugin-aware", adapter)
+        profile["adapter"]["provider_plugins"] = [str(plugin_path)]
+        self.write_profile(profile)
+        completed = self.run_dispatcher(
+            "review-paths",
+            "--backend",
+            "plugin-aware",
+            "--cwd",
+            str(self.workdir),
+            "--paths",
+            "src tests",
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result["review"]["verdict"], "approve")
 
     def test_prose_without_verdict_is_unknown_not_approval(self):
         adapter = self.stdout_adapter(

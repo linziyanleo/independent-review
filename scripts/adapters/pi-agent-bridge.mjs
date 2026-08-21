@@ -120,6 +120,19 @@ function parseInput(raw) {
   if (unsupported.length > 0) {
     throw new Error(`unsupported tools: ${unsupported.sort().join(", ")}`);
   }
+  if (input.provider_plugins === undefined || input.provider_plugins === null) {
+    input.provider_plugins = [];
+  }
+  if (
+    !Array.isArray(input.provider_plugins) ||
+    input.provider_plugins.some((plugin) => typeof plugin !== "string" || plugin.length === 0)
+  ) {
+    throw new Error("provider_plugins must be an array of non-empty strings");
+  }
+  const relativePlugin = input.provider_plugins.find((plugin) => !plugin.startsWith("/"));
+  if (relativePlugin !== undefined) {
+    throw new Error(`provider_plugins entries must be absolute paths: ${relativePlugin}`);
+  }
   if (!Number.isInteger(input.provider_timeout_ms) || input.provider_timeout_ms <= 0) {
     throw new Error("provider_timeout_ms must be a positive integer");
   }
@@ -146,6 +159,53 @@ function makeResourceLoader(createExtensionRuntime, systemPrompt) {
     extendResources: () => {},
     reload: async () => {},
   };
+}
+
+function makeProviderOnlyPi(modelRuntime) {
+  const allowed = {
+    registerProvider: (...args) => modelRuntime.registerProvider(...args),
+    unregisterProvider: (...args) => modelRuntime.unregisterProvider(...args),
+    registerNativeProvider: (...args) => modelRuntime.registerNativeProvider(...args),
+  };
+  return new Proxy(allowed, {
+    get(target, property) {
+      if (typeof property === "symbol") return undefined;
+      if (Object.prototype.hasOwnProperty.call(target, property)) return target[property];
+      throw new Error(
+        `provider plugin may only register providers; blocked access to '${String(property)}'`,
+      );
+    },
+    set(_target, property) {
+      throw new Error(
+        `provider plugin may only register providers; blocked assignment to '${String(property)}'`,
+      );
+    },
+  });
+}
+
+async function registerProviderPlugins(modelRuntime, pluginPaths) {
+  const pi = makeProviderOnlyPi(modelRuntime);
+  for (const pluginPath of pluginPaths) {
+    let module;
+    try {
+      module = await import(pathToFileURL(pluginPath).href);
+    } catch (error) {
+      throw new Error(
+        `provider plugin import failed (${pluginPath}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    const factory = module?.default;
+    if (typeof factory !== "function") {
+      throw new Error(`provider plugin has no default export function: ${pluginPath}`);
+    }
+    try {
+      await factory(pi);
+    } catch (error) {
+      throw new Error(
+        `provider plugin registration failed (${pluginPath}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 }
 
 function extractText(message) {
@@ -249,6 +309,24 @@ async function main() {
   );
 
   const modelRuntime = await ModelRuntime.create({ allowModelNetwork: false });
+  if (input.provider_plugins.length > 0) {
+    emitProgress(
+      "provider_plugins_loading",
+      { pi_task_invocations: 0, provider_plugin_count: input.provider_plugins.length },
+      true,
+    );
+    try {
+      await registerProviderPlugins(modelRuntime, input.provider_plugins);
+    } catch (error) {
+      failure("pi_provider_plugin_failed", "not_started", error, input, {}, 70);
+      return;
+    }
+    emitProgress(
+      "provider_plugins_loaded",
+      { pi_task_invocations: 0, provider_plugin_count: input.provider_plugins.length },
+      true,
+    );
+  }
   const model =
     input.provider === null ? undefined : modelRuntime.getModel(input.provider, input.model);
   if (input.provider !== null && !model) {

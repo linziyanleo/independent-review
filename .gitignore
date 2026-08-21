@@ -9,3 +9,4 @@ venv/
 .coverage
 .DS_Store
 .spec-anchor/
+mydocs/

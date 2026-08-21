@@ -228,6 +228,105 @@ class PiAdapterTests(unittest.TestCase):
         self.assertEqual(observed["node_bin"], str(selected_node))
         self.assertEqual(observed["package_dir"], str(package_dir.resolve()))
 
+    def test_provider_plugin_is_validated_and_forwarded_to_bridge(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selected_pi = root / "selected" / "pi"
+            selected_node = root / "selected" / "node"
+            selected_pi.parent.mkdir()
+            for binary in (selected_pi, selected_node):
+                binary.write_text("#!/bin/sh\n", encoding="utf-8")
+                binary.chmod(0o755)
+            package_dir = root / "pi-package"
+            (package_dir / "dist").mkdir(parents=True)
+            (package_dir / "package.json").write_text(
+                json.dumps({"name": "@earendil-works/pi-coding-agent"}),
+                encoding="utf-8",
+            )
+            (package_dir / "dist" / "index.js").write_text("", encoding="utf-8")
+            plugin = root / "qoder-provider.mjs"
+            plugin.write_text("export default async () => {};\n", encoding="utf-8")
+            prompt = root / "prompt.md"
+            prompt.write_text("Review this change.\n", encoding="utf-8")
+            observed = {}
+
+            def fake_run_bridge(node_bin, bridge, cwd, request, timeout_policy):
+                payload = json.loads(request)
+                observed["provider_plugins"] = payload["provider_plugins"]
+                envelope = {
+                    "type": "result",
+                    "subtype": "success",
+                    "is_error": False,
+                    "invocation_id": payload["invocation_id"],
+                    "pi_session_id": payload["pi_session_id"],
+                    "provider": "fake-provider",
+                    "model": "fake-model",
+                    "thinking_level": "medium",
+                    "pi_task_invocations": 1,
+                    "provider_request_count": 1,
+                    "retry_events": 0,
+                    "agent_start_events": 1,
+                    "agent_end_events": 1,
+                    "stop_reason": "stop",
+                    "tool_events": [],
+                    "result": "Verdict: approve\n",
+                }
+                return 0, (json.dumps(envelope) + "\n").encode("utf-8"), b""
+
+            argv = [
+                str(PI_PATH),
+                "prompt",
+                "--cwd",
+                str(root),
+                "--prompt-file",
+                str(prompt),
+                "--package-dir",
+                str(package_dir),
+                "--receipt-dir",
+                str(root / "receipts"),
+                "--pi-bin",
+                str(selected_pi),
+                "--node-bin",
+                str(selected_node),
+                "--provider-plugin",
+                str(plugin),
+            ]
+            with (
+                mock.patch.object(sys, "argv", argv),
+                mock.patch.object(PI, "run_bridge", side_effect=fake_run_bridge),
+                mock.patch.object(sys, "stdout", io.StringIO()),
+            ):
+                self.assertEqual(PI.main(), 0)
+
+        self.assertEqual(observed["provider_plugins"], [str(plugin.resolve())])
+
+    def test_relative_provider_plugin_is_rejected_before_invocation(self):
+        completed = subprocess.run(
+            [sys.executable, str(PI_PATH), "prompt", "--provider-plugin", "relative/plugin.mjs"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        diagnostic = json.loads(completed.stderr)
+        self.assertEqual(diagnostic["kind"], "invalid_arguments")
+        self.assertEqual(diagnostic["outcome"], "not_started")
+        self.assertEqual(diagnostic["backend_task_invocations"], 0)
+
+    def test_doctor_mode_rejects_provider_plugin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plugin = Path(directory) / "plugin.mjs"
+            plugin.write_text("export default async () => {};\n", encoding="utf-8")
+            completed = subprocess.run(
+                [sys.executable, str(PI_PATH), "doctor", "--provider-plugin", str(plugin)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        diagnostic = json.loads(completed.stderr)
+        self.assertEqual(diagnostic["kind"], "invalid_arguments")
+        self.assertEqual(diagnostic["outcome"], "not_started")
+        self.assertEqual(diagnostic["backend_task_invocations"], 0)
+
 
 class DshAdapterTests(unittest.TestCase):
     def test_prompt_command_is_headless_patched_and_read_only(self):

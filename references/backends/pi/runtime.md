@@ -45,6 +45,12 @@ read-only tool pairing, stop reason, selected identity, and non-empty result.
 It also maintains a metadata-only receipt. Preserve its `invocation_id`,
 `pi_session_id`, and `receipt_path` in the normalized trace.
 
+The one sanctioned addition is a model provider: a host-local profile may set
+`adapter.provider_plugins`, and the controller registers each plugin's default
+export through a provider-only shim before selecting the model. This adds a
+provider (never tools, commands, or hooks), so the read-only, single-turn
+contract holds. See [setup.md](setup.md) for the Qoder example.
+
 Pi distinguishes whole-task, provider-request, and stream-idle timeouts. The
 profile declares no dispatcher timeout and forwards an override only when the
 caller explicitly sets `--timeout-seconds`; otherwise retain Pi's safe

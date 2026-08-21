@@ -115,6 +115,7 @@ The dispatcher runs:
 | `timeout_flag` | Flag used to forward the effective whole-task timeout; `null` to never forward. |
 | `result.strategy` | `envelope` or `stdout-text`. |
 | `result.envelope_type` | For `envelope`: required `type` value of the adapter's JSON envelope. The envelope must carry a string `result` containing the review text and a `trace.outcome == "success"`. |
+| `provider_plugins` | Optional list of module paths (each `{skill_dir}`/`~` expanded, then required absolute by the adapter) forwarded as repeated `--provider-plugin`. Only the Pi SDK adapter consumes these: it registers each module's default export as a model provider on the ModelRuntime through a provider-only shim, so a plugin can add a provider (e.g. `qoder`) but never tools, commands, or event hooks. Absent means the hermetic default with no extra providers. |
 
 An adapter that accepts a declared binary flag must revalidate the path before
 the backend task starts and execute that exact path; it must not replace the
@@ -170,3 +171,9 @@ forever and an explicit `--timeout-seconds` is never silently dropped.
 - A profile selects and spells behavior; it must not widen the reviewer's
   authority. Never add sandbox bypasses, writable mounts, approval prompts,
   session resume, or network-enabling flags.
+- `adapter.provider_plugins` is the only sanctioned way to add a model
+  provider. Point it at a trusted host-local module only; the Pi adapter runs
+  each plugin behind a provider-only shim, so it may register a model provider
+  but can never add tools, commands, or event hooks. It changes which model
+  can answer, not what the reviewer is allowed to do — the read-only tool set
+  and single-turn contract are unchanged.

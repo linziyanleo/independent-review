@@ -26,3 +26,33 @@ Before the first review:
 After changing either binary, credentials, the Pi SDK, or the selected model,
 repeat discovery and one authorized smoke before relying on the backend for a
 review gate.
+
+## Adding a model provider (e.g. Qoder)
+
+The bundled `pi.json` loads no extensions, so a provider that Pi normally
+registers through an extension (such as `qoder`, added by
+`@ali/qoder-compat-api-pi-plugin`) is not available under it. To use one, add a
+host-local profile that points `adapter.provider_plugins` at the plugin module:
+
+```json
+"adapter": {
+  "path_tools": {"flag": "--tools", "value": "read,grep,find,ls"},
+  "timeout_flag": "--wall-timeout-seconds",
+  "result": {"strategy": "envelope", "envelope_type": "pi_task_result"},
+  "provider_plugins": [
+    "~/.pi/agent/npm/node_modules/@ali/qoder-compat-api-pi-plugin/dist/index.js"
+  ]
+}
+```
+
+Save it as `${INDEPENDENT_REVIEW_HOME:-~/.config/independent-review}/backends/pi-qoder.json`
+(never in the reviewed checkout), then select it explicitly with
+`--backend pi-qoder --provider qoder --model <id>`. The adapter registers the
+plugin's default export through a provider-only shim: it may add the model
+provider but never tools, commands, or hooks, so the read-only, single-turn
+contract is unchanged. The bundled `pi` profile stays hermetic.
+
+Any local service the provider depends on must be running first — for Qoder,
+start `qoder-compat serve` (default `http://127.0.0.1:8080`) so the plugin can
+fetch its model catalog and route requests. A missing server surfaces as a
+`pi_provider_plugin_failed` diagnostic with `outcome=not_started`.

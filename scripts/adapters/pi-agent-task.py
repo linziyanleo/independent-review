@@ -322,6 +322,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--package-dir")
     parser.add_argument(
+        "--provider-plugin",
+        dest="provider_plugin",
+        action="append",
+        help=(
+            "absolute path to an authorized Pi model-provider plugin module; repeatable. "
+            "Each plugin may only register model providers, not tools, commands, or hooks."
+        ),
+    )
+    parser.add_argument(
         "--receipt-dir",
         default=os.environ.get("PI_AGENT_RECEIPT_DIR", str(DEFAULT_RECEIPT_DIR)),
         help="private directory for metadata-only receipts",
@@ -420,6 +429,37 @@ def normalize_tools(args: argparse.Namespace, parser: argparse.ArgumentParser) -
     if unsupported:
         parser.error("unsupported non-read-only tools: " + ", ".join(unsupported))
     return sorted(tools)
+
+
+PROVIDER_PLUGIN_SUFFIXES = (".js", ".mjs", ".cjs")
+
+
+def normalize_provider_plugins(
+    args: argparse.Namespace, parser: argparse.ArgumentParser
+) -> list[str]:
+    values = args.provider_plugin or []
+    if args.mode == "doctor":
+        if values:
+            parser.error(f"{args.mode} mode does not accept provider plugins")
+        return []
+    resolved: list[str] = []
+    for value in values:
+        candidate = Path(value).expanduser()
+        if not candidate.is_absolute():
+            parser.error(f"--provider-plugin must be an absolute path: {value}")
+        try:
+            candidate = candidate.resolve(strict=True)
+        except OSError as exc:
+            parser.error(f"--provider-plugin is not readable: {value}: {exc}")
+        if not candidate.is_file():
+            parser.error(f"--provider-plugin is not a file: {candidate}")
+        if candidate.suffix not in PROVIDER_PLUGIN_SUFFIXES:
+            parser.error(
+                "--provider-plugin must be a JavaScript module "
+                f"({', '.join(PROVIDER_PLUGIN_SUFFIXES)}): {candidate}"
+            )
+        resolved.append(str(candidate))
+    return resolved
 
 
 def locate_package_dir(
@@ -693,6 +733,8 @@ def failure_exit_code(kind: Any) -> int:
         return EXIT_MODEL_UNAVAILABLE
     if kind in {"pi_sdk_import_failed", "pi_sdk_incompatible", "pi_bridge_failure"}:
         return EXIT_SPAWN_FAILURE
+    if kind == "pi_provider_plugin_failed":
+        return EXIT_SPAWN_FAILURE
     if kind == "pi_result_limit":
         return EXIT_CAPTURE_LIMIT
     return EXIT_SEMANTIC_FAILURE
@@ -708,6 +750,7 @@ def main() -> int:
         parser.error("--provider and --model must be supplied together")
 
     tools = normalize_tools(args, parser)
+    provider_plugins = normalize_provider_plugins(args, parser)
     try:
         timeout_policy = build_timeout_policy(
             mode=args.mode,
@@ -784,6 +827,10 @@ def main() -> int:
         "requested_thinking_level": args.effort,
         "tools": tools,
         "timeout_policy": timeout_policy.diagnostic(),
+        "provider_plugin_count": len(provider_plugins),
+        "provider_plugin_sha256": [
+            sha256_bytes(path.encode("utf-8")) for path in provider_plugins
+        ],
     }
     try:
         _ACTIVE_RECEIPT = ReceiptWriter(receipt_directory, initial_receipt)
@@ -810,6 +857,7 @@ def main() -> int:
             "thinking_level": args.effort,
             "prompt": prompt,
             "tools": tools,
+            "provider_plugins": provider_plugins,
             "provider_timeout_ms": timeout_policy.provider_timeout_seconds * 1000,
             "stream_idle_timeout_ms": timeout_policy.stream_idle_timeout_seconds * 1000,
             "max_result_bytes": args.max_result_bytes,

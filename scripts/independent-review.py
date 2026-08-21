@@ -322,7 +322,9 @@ def validate_profile(raw: Any, origin: str) -> dict[str, Any]:
         if unexpected:
             raise ProfileError(f"{origin}: {unexpected} are not valid for {kind}")
         adapter = require_type(raw.get("adapter"), dict, "adapter")
-        unknown_adapter = sorted(set(adapter) - {"path_tools", "timeout_flag", "result"})
+        unknown_adapter = sorted(
+            set(adapter) - {"path_tools", "timeout_flag", "result", "provider_plugins"}
+        )
         if unknown_adapter:
             raise ProfileError(f"adapter has unknown fields {unknown_adapter}")
         path_tools = adapter.get("path_tools")
@@ -336,12 +338,23 @@ def validate_profile(raw: Any, origin: str) -> dict[str, Any]:
             if not flag or not value:
                 raise ProfileError("adapter.path_tools needs flag and value")
             path_tools = {"flag": flag, "value": value}
+        provider_plugins_raw = adapter.get("provider_plugins")
+        provider_plugins: list[str] = []
+        if provider_plugins_raw is not None:
+            require_type(provider_plugins_raw, list, "adapter.provider_plugins")
+            for index, entry in enumerate(provider_plugins_raw):
+                if not isinstance(entry, str) or not entry.strip():
+                    raise ProfileError(
+                        f"adapter.provider_plugins[{index}] must be a non-empty string"
+                    )
+                provider_plugins.append(str(expand_profile_path(entry)))
         profile["adapter"] = {
             "path_tools": path_tools,
             "timeout_flag": optional_string(adapter.get("timeout_flag"), "adapter.timeout_flag"),
             "result": validate_result_spec(
                 adapter.get("result"), "adapter.result", ("envelope", "stdout-text")
             ),
+            "provider_plugins": provider_plugins,
         }
         if raw.get("command") is not None:
             raise ProfileError("command is only valid for argv-stdin-jsonl")
@@ -1445,6 +1458,8 @@ def run_adapter_profile(
             command.extend([adapter_flag, binary_path])
     if args.mode == "review-paths" and adapter_section["path_tools"]:
         command.extend([adapter_section["path_tools"]["flag"], adapter_section["path_tools"]["value"]])
+    for plugin_path in adapter_section.get("provider_plugins", []):
+        command.extend(["--provider-plugin", plugin_path])
     identity = profile["identity"]
     for key in IDENTITY_KEYS:
         value = getattr(args, key)
