@@ -65,6 +65,14 @@ python3 "$DISPATCHER" review-diff \
   --rebuttal-file /path/to/rebuttal.md
 ```
 
+A round can run for tens of minutes and prints nothing until the final JSON
+envelope, so invoke it as one blocking foreground call. Host agents that turn
+long commands into background sessions should wait in the coarsest window they
+support instead of polling every few seconds — each poll is another full model
+turn. On Codex that means empty polls with a large `yield_time_ms`, raised
+beyond the 300000 ms default with `background_terminal_max_timeout` in
+`~/.codex/config.toml`.
+
 The experimental `dsh` profile is explicit-only: it is listed by `backends`
 but never selected by implicit `auto`. Its current operating contract and
 limitations live in the backend

@@ -152,6 +152,16 @@ python3 "$INDEPENDENT_REVIEW" review-artifact \
 Omit `--model` and `--effort` unless the user or a remembered default chooses
 them. The dispatcher rejects identity flags a profile does not declare.
 
+Run the dispatcher as one blocking foreground call. It stays silent until the
+final envelope, so there is no progress to watch, and profile timeouts of
+1200-2400 seconds outlast most host tool windows. When the harness cannot block
+that long and hands the run back as a background session — Codex yields any
+command after at most 30 seconds — wait with the coarsest window the harness
+offers, not a few seconds at a time: every poll is another full model turn, and
+the wait already returns early the moment the run finishes. Under Codex, empty
+`write_stdin` polls accept `yield_time_ms` up to `background_terminal_max_timeout`
+(300000 ms unless the host config raises it).
+
 ## Adversarial Acceptance
 
 Transport success, reviewer verdict, and acceptance are three separate facts.

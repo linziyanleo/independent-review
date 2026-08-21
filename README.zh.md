@@ -57,6 +57,12 @@ python3 "$DISPATCHER" review-diff \
   --rebuttal-file /path/to/rebuttal.md
 ```
 
+一轮评审可能运行数十分钟，且在打印最终 JSON 结果前没有任何输出，因此应当
+以单次前台阻塞调用发起。若宿主 agent 会把长命令转成后台会话，请用它支持的
+最粗粒度窗口等待，而不是每隔几秒轮询一次——每次轮询都是一个完整的模型 turn。
+在 Codex 上即使用较大的 `yield_time_ms` 空轮询，并在 `~/.codex/config.toml`
+中用 `background_terminal_max_timeout` 把 300000 ms 默认上限调高。
+
 实验性的 `dsh` profile 仅支持显式选择：`backends` 会列出它，但隐式
 `auto` 永远不会选中。当前运行契约与限制放在 backend
 [runtime 指南](references/backends/dsh/runtime.md)；隔离 home 与身份配置
